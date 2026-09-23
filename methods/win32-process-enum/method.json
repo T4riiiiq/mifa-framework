@@ -1,0 +1,28 @@
+{
+  "id": "win32-process-enum",
+  "name": "Win32 Process Enumeration",
+  "language": "cpp",
+  "description": "Enumerates running Windows processes and queries basic process metadata using Win32 APIs.",
+  "architectures": ["x64", "x86"],
+  "requires_payload": false,
+  "payload_types": [],
+  "requires_target": false,
+  "sources": [
+    {
+      "template": "templates/main.cpp.tmpl",
+      "output": "main.cpp",
+      "compile": true
+    },
+    {
+      "template": "templates/process_enum.cpp.tmpl",
+      "output": "process_enum.cpp",
+      "compile": true
+    },
+    {
+      "template": "templates/process_enum.hpp.tmpl",
+      "output": "process_enum.hpp",
+      "compile": false
+    }
+  ],
+  "output_name": "win32-process-enum.exe"
+}

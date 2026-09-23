@@ -1,0 +1,25 @@
+#ifndef PROCESS_ENUM_HPP
+#define PROCESS_ENUM_HPP
+
+#include <windows.h>
+#include <string>
+
+
+struct ProcessRecord
+{
+    DWORD process_id;
+    DWORD parent_process_id;
+    DWORD thread_count;
+
+    std::string executable_name;
+    std::string image_path;
+};
+
+
+bool enumerate_processes();
+
+std::string query_process_image_path(
+    DWORD process_id
+);
+
+#endif

@@ -1,0 +1,7 @@
+{
+  "id": "win32-process-enum-x64",
+  "name": "Win32 Process Enumeration x64",
+  "method": "win32-process-enum",
+  "architecture": "x64",
+  "build_type": "release"
+}
