@@ -38,8 +38,16 @@ jobs:
         run: |
           python3 tools/doctor.py --require-compilers
 
-      - name: Release compile matrix
+      - name: Full release compile matrix
         run: |
           python3 tools/release_validate.py \
             --compile \
             --json dist/ci-release-validation.json
+
+      - name: Prepare x64 smoke bundle
+        run: |
+          python3 tools/prepare_smoke.py --arch x64
+
+      - name: Prepare x86 smoke bundle
+        run: |
+          python3 tools/prepare_smoke.py --arch x86

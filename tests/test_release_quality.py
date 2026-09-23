@@ -11,7 +11,7 @@ ROOT = Path(
 class ReleaseQualityTests(
     unittest.TestCase
 ):
-    def test_version_is_1_1_0(
+    def test_version_is_1_2_0(
         self
     ):
         version = (
@@ -23,7 +23,7 @@ class ReleaseQualityTests(
 
         self.assertEqual(
             version,
-            "1.1.0"
+            "1.2.0"
         )
 
     def test_expected_catalog_counts(
@@ -140,6 +140,53 @@ class ReleaseQualityTests(
                         ROOT
                         / relative
                     ).is_file()
+                )
+
+    def test_phase3_release_docs_exist(
+        self
+    ):
+        for relative in [
+            "docs/PHASE3_BATCH3_INTEGRATION_VALIDATION.md",
+            "docs/V1_2_VALIDATION.md",
+            "docs/RELEASE_NOTES_v1.2.md",
+        ]:
+            with self.subTest(
+                path=relative
+            ):
+                self.assertTrue(
+                    (
+                        ROOT
+                        / relative
+                    ).is_file()
+                )
+
+    def test_smoke_tool_covers_phase3_methods(
+        self
+    ):
+        text = (
+            ROOT
+            / "tools"
+            / "prepare_smoke.py"
+        ).read_text(
+            encoding="utf-8"
+        )
+
+        required = [
+            "win32-payload-inspect",
+            "win32-file-buffer",
+            "win32-base64-buffer",
+            "win32-hex-buffer",
+            "win32-pe-runtime-info",
+            "win32-pe-section-characteristics",
+        ]
+
+        for method_id in required:
+            with self.subTest(
+                method=method_id
+            ):
+                self.assertIn(
+                    f'"{method_id}"',
+                    text
                 )
 
 
