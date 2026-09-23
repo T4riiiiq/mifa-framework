@@ -104,9 +104,11 @@ class Compiler:
         ])
 
         if language == "cpp":
-            command.append(
-                "-std=c++17"
-            )
+            command.extend([
+                "-std=c++17",
+                "-static-libgcc",
+                "-static-libstdc++"
+            ])
 
         if build_type == "release":
             command.append(

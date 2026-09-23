@@ -1,0 +1,7 @@
+{
+  "id": "win32-process-info-x64",
+  "name": "Win32 Process Info x64",
+  "method": "win32-process-info",
+  "architecture": "x64",
+  "build_type": "release"
+}

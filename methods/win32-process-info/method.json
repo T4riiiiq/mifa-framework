@@ -1,0 +1,28 @@
+{
+  "id": "win32-process-info",
+  "name": "Win32 Process Info",
+  "language": "cpp",
+  "description": "Win32 C++ method that collects basic information about the current process and Windows host.",
+  "architectures": ["x64", "x86"],
+  "requires_payload": false,
+  "payload_types": [],
+  "requires_target": false,
+  "sources": [
+    {
+      "template": "templates/main.cpp.tmpl",
+      "output": "main.cpp",
+      "compile": true
+    },
+    {
+      "template": "templates/process_info.cpp.tmpl",
+      "output": "process_info.cpp",
+      "compile": true
+    },
+    {
+      "template": "templates/process_info.hpp.tmpl",
+      "output": "process_info.hpp",
+      "compile": false
+    }
+  ],
+  "output_name": "win32-process-info.exe"
+}

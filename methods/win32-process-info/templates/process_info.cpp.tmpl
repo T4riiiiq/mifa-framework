@@ -1,0 +1,149 @@
+#include "process_info.hpp"
+
+#include <iostream>
+
+
+ProcessInfo collect_process_info()
+{
+    ProcessInfo info{};
+
+    info.process_id =
+        GetCurrentProcessId();
+
+    info.thread_id =
+        GetCurrentThreadId();
+
+
+    char module_path[MAX_PATH] = {};
+
+    DWORD module_length =
+        GetModuleFileNameA(
+            nullptr,
+            module_path,
+            MAX_PATH
+        );
+
+    if (module_length > 0)
+    {
+        info.module_path =
+            module_path;
+    }
+    else
+    {
+        info.module_path =
+            "<unavailable>";
+    }
+
+
+    char computer_name[MAX_COMPUTERNAME_LENGTH + 1] = {};
+
+    DWORD computer_name_size =
+        sizeof(computer_name);
+
+    if (
+        GetComputerNameA(
+            computer_name,
+            &computer_name_size
+        )
+    )
+    {
+        info.computer_name =
+            computer_name;
+    }
+    else
+    {
+        info.computer_name =
+            "<unavailable>";
+    }
+
+
+    char windows_directory[MAX_PATH] = {};
+
+    UINT windows_length =
+        GetWindowsDirectoryA(
+            windows_directory,
+            MAX_PATH
+        );
+
+    if (windows_length > 0)
+    {
+        info.windows_directory =
+            windows_directory;
+    }
+    else
+    {
+        info.windows_directory =
+            "<unavailable>";
+    }
+
+
+    char system_directory[MAX_PATH] = {};
+
+    UINT system_length =
+        GetSystemDirectoryA(
+            system_directory,
+            MAX_PATH
+        );
+
+    if (system_length > 0)
+    {
+        info.system_directory =
+            system_directory;
+    }
+    else
+    {
+        info.system_directory =
+            "<unavailable>";
+    }
+
+
+    return info;
+}
+
+
+void print_process_info(
+    const ProcessInfo& info
+)
+{
+    std::cout
+        << "Mifa Win32 Process Info"
+        << std::endl;
+
+    std::cout
+        << "Build: {{BUILD_ID}}"
+        << std::endl;
+
+    std::cout
+        << "Architecture: {{ARCH}}"
+        << std::endl;
+
+    std::cout
+        << "Process ID: "
+        << info.process_id
+        << std::endl;
+
+    std::cout
+        << "Thread ID: "
+        << info.thread_id
+        << std::endl;
+
+    std::cout
+        << "Computer: "
+        << info.computer_name
+        << std::endl;
+
+    std::cout
+        << "Executable: "
+        << info.module_path
+        << std::endl;
+
+    std::cout
+        << "Windows directory: "
+        << info.windows_directory
+        << std::endl;
+
+    std::cout
+        << "System directory: "
+        << info.system_directory
+        << std::endl;
+}

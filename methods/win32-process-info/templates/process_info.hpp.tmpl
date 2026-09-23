@@ -1,0 +1,24 @@
+#ifndef PROCESS_INFO_HPP
+#define PROCESS_INFO_HPP
+
+#include <windows.h>
+#include <string>
+
+struct ProcessInfo
+{
+    DWORD process_id;
+    DWORD thread_id;
+
+    std::string module_path;
+    std::string computer_name;
+    std::string windows_directory;
+    std::string system_directory;
+};
+
+ProcessInfo collect_process_info();
+
+void print_process_info(
+    const ProcessInfo& info
+);
+
+#endif
