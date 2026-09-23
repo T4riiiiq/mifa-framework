@@ -1,0 +1,79 @@
+#include "module_enum.hpp"
+
+#include <cstdlib>
+#include <iostream>
+
+
+int main(
+    int argc,
+    char* argv[]
+)
+{
+    DWORD process_id =
+        GetCurrentProcessId();
+
+
+    if (argc >= 2)
+    {
+        char* end = nullptr;
+
+        unsigned long parsed_pid =
+            std::strtoul(
+                argv[1],
+                &end,
+                10
+            );
+
+
+        if (
+            end == argv[1] ||
+            *end != '\0' ||
+            parsed_pid == 0
+        )
+        {
+            std::cerr
+                << "[!] Invalid PID"
+                << std::endl;
+
+            return 1;
+        }
+
+
+        process_id =
+            static_cast<DWORD>(
+                parsed_pid
+            );
+    }
+
+
+    std::cout
+        << "Mifa Win32 Module Enumeration"
+        << std::endl;
+
+    std::cout
+        << "Build: {{BUILD_ID}}"
+        << std::endl;
+
+    std::cout
+        << "Architecture: {{ARCH}}"
+        << std::endl;
+
+    std::cout
+        << "Target PID: "
+        << process_id
+        << std::endl;
+
+    std::cout
+        << std::endl;
+
+
+    if (!enumerate_modules(
+        process_id
+    ))
+    {
+        return 1;
+    }
+
+
+    return 0;
+}

@@ -1,0 +1,128 @@
+#include "module_enum.hpp"
+
+#include <tlhelp32.h>
+#include <cstdint>
+#include <iomanip>
+#include <iostream>
+
+
+bool enumerate_modules(
+    DWORD process_id
+)
+{
+    HANDLE snapshot =
+        CreateToolhelp32Snapshot(
+            TH32CS_SNAPMODULE |
+            TH32CS_SNAPMODULE32,
+            process_id
+        );
+
+
+    if (snapshot == INVALID_HANDLE_VALUE)
+    {
+        std::cerr
+            << "[!] CreateToolhelp32Snapshot failed"
+            << std::endl;
+
+        std::cerr
+            << "[!] GetLastError: "
+            << GetLastError()
+            << std::endl;
+
+        return false;
+    }
+
+
+    MODULEENTRY32 module_entry{};
+
+    module_entry.dwSize =
+        sizeof(MODULEENTRY32);
+
+
+    if (!Module32First(
+        snapshot,
+        &module_entry
+    ))
+    {
+        std::cerr
+            << "[!] Module32First failed"
+            << std::endl;
+
+        std::cerr
+            << "[!] GetLastError: "
+            << GetLastError()
+            << std::endl;
+
+        CloseHandle(
+            snapshot
+        );
+
+        return false;
+    }
+
+
+    std::size_t module_count = 0;
+
+
+    std::cout
+        << "BASE ADDRESS"
+        << "\t"
+        << "SIZE"
+        << "\t"
+        << "MODULE"
+        << "\t"
+        << "PATH"
+        << std::endl;
+
+
+    do
+    {
+        std::uintptr_t base_address =
+            reinterpret_cast<std::uintptr_t>(
+                module_entry.modBaseAddr
+            );
+
+
+        std::cout
+            << "0x"
+            << std::hex
+            << std::uppercase
+            << base_address
+            << std::dec
+            << "\t"
+
+            << module_entry.modBaseSize
+            << "\t"
+
+            << module_entry.szModule
+            << "\t"
+
+            << module_entry.szExePath
+            << std::endl;
+
+
+        ++module_count;
+
+    }
+    while (
+        Module32Next(
+            snapshot,
+            &module_entry
+        )
+    );
+
+
+    CloseHandle(
+        snapshot
+    );
+
+
+    std::cout
+        << std::endl
+        << "[+] Modules enumerated: "
+        << module_count
+        << std::endl;
+
+
+    return true;
+}

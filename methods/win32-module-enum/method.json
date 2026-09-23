@@ -1,0 +1,28 @@
+{
+  "id": "win32-module-enum",
+  "name": "Win32 Module Enumeration",
+  "language": "cpp",
+  "description": "Enumerates modules loaded in a Windows process using the Toolhelp snapshot APIs.",
+  "architectures": ["x64", "x86"],
+  "requires_payload": false,
+  "payload_types": [],
+  "requires_target": false,
+  "sources": [
+    {
+      "template": "templates/main.cpp.tmpl",
+      "output": "main.cpp",
+      "compile": true
+    },
+    {
+      "template": "templates/module_enum.cpp.tmpl",
+      "output": "module_enum.cpp",
+      "compile": true
+    },
+    {
+      "template": "templates/module_enum.hpp.tmpl",
+      "output": "module_enum.hpp",
+      "compile": false
+    }
+  ],
+  "output_name": "win32-module-enum.exe"
+}

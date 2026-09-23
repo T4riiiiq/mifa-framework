@@ -1,0 +1,7 @@
+{
+  "id": "win32-module-enum-x64",
+  "name": "Win32 Module Enumeration x64",
+  "method": "win32-module-enum",
+  "architecture": "x64",
+  "build_type": "release"
+}
