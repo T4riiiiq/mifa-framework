@@ -1,0 +1,7 @@
+{
+  "id": "test-x86",
+  "name": "Test x86",
+  "method": "hello-world",
+  "architecture": "x86",
+  "build_type": "release"
+}
