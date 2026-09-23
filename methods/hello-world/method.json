@@ -2,12 +2,27 @@
   "id": "hello-world",
   "name": "Hello World",
   "language": "c",
-  "description": "Harmless test method used to validate Mifa's method system.",
+  "description": "Harmless multi-file test method.",
   "architectures": ["x64", "x86"],
   "requires_payload": false,
   "payload_types": [],
   "requires_target": false,
-  "template": "templates/main.c.tmpl",
-  "source_name": "main.c",
+  "sources": [
+    {
+      "template": "templates/main.c.tmpl",
+      "output": "main.c",
+      "compile": true
+    },
+    {
+      "template": "templates/message.c.tmpl",
+      "output": "message.c",
+      "compile": true
+    },
+    {
+      "template": "templates/message.h.tmpl",
+      "output": "message.h",
+      "compile": false
+    }
+  ],
   "output_name": "hello.exe"
 }

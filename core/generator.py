@@ -2,6 +2,21 @@ from pathlib import Path
 
 
 class SourceGenerator:
+    def _render(
+        self,
+        template,
+        values
+    ):
+        generated = template
+
+        for key, value in values.items():
+            generated = generated.replace(
+                key,
+                str(value)
+            )
+
+        return generated
+
     def generate(
         self,
         method,
@@ -11,52 +26,37 @@ class SourceGenerator:
         payload_info=None,
         payload_type=None
     ):
-        method_path = Path(method["_path"])
-
-        template_relative = method.get("template")
-        source_name = method.get("source_name")
-
-        if not template_relative:
-            raise ValueError(
-                f"Method '{method.get('id')}' "
-                "does not define a template"
-            )
-
-        if not source_name:
-            raise ValueError(
-                f"Method '{method.get('id')}' "
-                "does not define source_name"
-            )
-
-        template_path = (
-            method_path / template_relative
-        )
-
-        if not template_path.exists():
-            raise FileNotFoundError(
-                f"Template not found: "
-                f"{template_path}"
-            )
-
-        template = template_path.read_text(
-            encoding="utf-8"
+        method_path = Path(
+            method["_path"]
         )
 
         values = {
-            "{{BUILD_ID}}": build_id,
-            "{{ARCH}}": preset.get(
-                "architecture",
-                ""
-            ),
-            "{{BUILD_TYPE}}": preset.get(
-                "build_type",
-                ""
-            ),
+            "{{BUILD_ID}}":
+                build_id,
 
-            "{{PAYLOAD_NAME}}": "",
-            "{{PAYLOAD_TYPE}}": "",
-            "{{PAYLOAD_SIZE}}": "",
-            "{{PAYLOAD_SHA256}}": ""
+            "{{ARCH}}":
+                preset.get(
+                    "architecture",
+                    ""
+                ),
+
+            "{{BUILD_TYPE}}":
+                preset.get(
+                    "build_type",
+                    ""
+                ),
+
+            "{{PAYLOAD_NAME}}":
+                "",
+
+            "{{PAYLOAD_TYPE}}":
+                "",
+
+            "{{PAYLOAD_SIZE}}":
+                "",
+
+            "{{PAYLOAD_SHA256}}":
+                ""
         }
 
         if payload_info is not None:
@@ -85,25 +85,63 @@ class SourceGenerator:
                     )
             })
 
-        generated = template
-
-        for key, value in values.items():
-            generated = generated.replace(
-                key,
-                str(value)
-            )
-
         source_dir = (
             build_dir / "source"
         )
 
-        source_path = (
-            source_dir / source_name
+        source_dir.mkdir(
+            parents=True,
+            exist_ok=True
         )
 
-        source_path.write_text(
-            generated,
-            encoding="utf-8"
-        )
+        generated_files = []
 
-        return source_path
+        for source in method.get(
+            "sources",
+            []
+        ):
+            template_path = (
+                method_path
+                / source["template"]
+            )
+
+            if not template_path.exists():
+                raise FileNotFoundError(
+                    f"Template not found: "
+                    f"{template_path}"
+                )
+
+            template = (
+                template_path.read_text(
+                    encoding="utf-8"
+                )
+            )
+
+            generated = self._render(
+                template,
+                values
+            )
+
+            output_path = (
+                source_dir
+                / source["output"]
+            )
+
+            output_path.parent.mkdir(
+                parents=True,
+                exist_ok=True
+            )
+
+            output_path.write_text(
+                generated,
+                encoding="utf-8"
+            )
+
+            generated_files.append({
+                "path": output_path,
+                "compile": source[
+                    "compile"
+                ]
+            })
+
+        return generated_files

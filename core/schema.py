@@ -6,8 +6,7 @@ class MethodSchemaValidator:
         "architectures",
         "requires_payload",
         "payload_types",
-        "template",
-        "source_name",
+        "sources",
         "output_name"
     ]
 
@@ -34,9 +33,22 @@ class MethodSchemaValidator:
 
         method_id = method.get("id")
 
-        if not isinstance(method_id, str) or not method_id.strip():
+        if (
+            not isinstance(method_id, str)
+            or not method_id.strip()
+        ):
             errors.append(
                 "id must be a non-empty string"
+            )
+
+        name = method.get("name")
+
+        if (
+            not isinstance(name, str)
+            or not name.strip()
+        ):
+            errors.append(
+                "name must be a non-empty string"
             )
 
         language = method.get("language")
@@ -50,7 +62,10 @@ class MethodSchemaValidator:
             "architectures"
         )
 
-        if not isinstance(architectures, list):
+        if not isinstance(
+            architectures,
+            list
+        ):
             errors.append(
                 "architectures must be a list"
             )
@@ -62,9 +77,13 @@ class MethodSchemaValidator:
 
         else:
             for architecture in architectures:
-                if architecture not in self.SUPPORTED_ARCHITECTURES:
+                if (
+                    architecture
+                    not in self.SUPPORTED_ARCHITECTURES
+                ):
                     errors.append(
-                        f"Unsupported architecture: {architecture}"
+                        f"Unsupported architecture: "
+                        f"{architecture}"
                     )
 
         requires_payload = method.get(
@@ -83,7 +102,10 @@ class MethodSchemaValidator:
             "payload_types"
         )
 
-        if not isinstance(payload_types, list):
+        if not isinstance(
+            payload_types,
+            list
+        ):
             errors.append(
                 "payload_types must be a list"
             )
@@ -94,7 +116,8 @@ class MethodSchemaValidator:
                 and not payload_types
             ):
                 errors.append(
-                    "requires_payload=true but payload_types is empty"
+                    "requires_payload=true but "
+                    "payload_types is empty"
                 )
 
             if (
@@ -102,41 +125,123 @@ class MethodSchemaValidator:
                 and payload_types
             ):
                 errors.append(
-                    "requires_payload=false but payload_types is not empty"
+                    "requires_payload=false but "
+                    "payload_types is not empty"
                 )
 
-        template = method.get(
-            "template"
+        sources = method.get(
+            "sources"
         )
 
         if not isinstance(
-            template,
-            str
-        ) or not template.strip():
+            sources,
+            list
+        ):
             errors.append(
-                "template must be a non-empty string"
+                "sources must be a list"
             )
 
-        source_name = method.get(
-            "source_name"
-        )
-
-        if not isinstance(
-            source_name,
-            str
-        ) or not source_name.strip():
+        elif not sources:
             errors.append(
-                "source_name must be a non-empty string"
+                "sources must contain at least one file"
             )
+
+        else:
+            outputs = set()
+            compile_count = 0
+
+            for index, source in enumerate(
+                sources
+            ):
+                prefix = (
+                    f"sources[{index}]"
+                )
+
+                if not isinstance(
+                    source,
+                    dict
+                ):
+                    errors.append(
+                        f"{prefix} must be an object"
+                    )
+                    continue
+
+                template = source.get(
+                    "template"
+                )
+
+                output = source.get(
+                    "output"
+                )
+
+                compile_file = source.get(
+                    "compile"
+                )
+
+                if (
+                    not isinstance(
+                        template,
+                        str
+                    )
+                    or not template.strip()
+                ):
+                    errors.append(
+                        f"{prefix}.template must "
+                        "be a non-empty string"
+                    )
+
+                if (
+                    not isinstance(
+                        output,
+                        str
+                    )
+                    or not output.strip()
+                ):
+                    errors.append(
+                        f"{prefix}.output must "
+                        "be a non-empty string"
+                    )
+
+                elif output in outputs:
+                    errors.append(
+                        f"Duplicate source output: "
+                        f"{output}"
+                    )
+
+                else:
+                    outputs.add(
+                        output
+                    )
+
+                if not isinstance(
+                    compile_file,
+                    bool
+                ):
+                    errors.append(
+                        f"{prefix}.compile must "
+                        "be true or false"
+                    )
+
+                elif compile_file:
+                    compile_count += 1
+
+            if compile_count == 0:
+                errors.append(
+                    "At least one source must "
+                    "have compile=true"
+                )
 
         output_name = method.get(
             "output_name"
         )
 
-        if not isinstance(
-            output_name,
-            str
-        ) or not output_name.strip():
+        if (
+            not isinstance(
+                output_name,
+                str
+            )
+            or not output_name.strip()
+        ):
             errors.append(
                 "output_name must be a non-empty string"
             )

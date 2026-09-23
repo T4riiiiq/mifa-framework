@@ -15,9 +15,17 @@ from core.schema import MethodSchemaValidator
 
 ROOT = Path(__file__).resolve().parent
 
-METHODS_DIR = ROOT / "methods"
-PRESETS_DIR = ROOT / "presets"
-BUILDS_DIR = ROOT / "builds"
+METHODS_DIR = (
+    ROOT / "methods"
+)
+
+PRESETS_DIR = (
+    ROOT / "presets"
+)
+
+BUILDS_DIR = (
+    ROOT / "builds"
+)
 
 
 def show_banner():
@@ -27,11 +35,15 @@ def show_banner():
     print("-" * 24)
 
 
-def list_methods(catalog):
+def list_methods(
+    catalog
+):
     methods = catalog.discover()
 
     if not methods:
-        print("[i] No methods installed.")
+        print(
+            "[i] No methods installed."
+        )
         return
 
     print(
@@ -50,8 +62,13 @@ def list_methods(catalog):
         )
 
 
-def show_method(catalog, method_id):
-    method = catalog.get(method_id)
+def show_method(
+    catalog,
+    method_id
+):
+    method = catalog.get(
+        method_id
+    )
 
     if method is None:
         print(
@@ -98,21 +115,38 @@ def show_method(catalog, method_id):
     print(
         "Payload types   : "
         + (
-            ", ".join(payload_types)
+            ", ".join(
+                payload_types
+            )
             if payload_types
             else "-"
         )
     )
 
-    print(
-        f"Template        : "
-        f"{method.get('template', '-')}"
+    sources = method.get(
+        "sources",
+        []
     )
 
     print(
-        f"Source name     : "
-        f"{method.get('source_name', '-')}"
+        f"Source files    : "
+        f"{len(sources)}"
     )
+
+    for source in sources:
+        marker = (
+            "compile"
+            if source.get(
+                "compile"
+            )
+            else "asset"
+        )
+
+        print(
+            f"                  "
+            f"{source.get('output', '-')} "
+            f"({marker})"
+        )
 
     print(
         f"Output name     : "
@@ -125,11 +159,15 @@ def show_method(catalog, method_id):
     )
 
 
-def list_presets(store):
+def list_presets(
+    store
+):
     presets = store.discover()
 
     if not presets:
-        print("[i] No presets installed.")
+        print(
+            "[i] No presets installed."
+        )
         return
 
     print(
@@ -150,11 +188,16 @@ def list_presets(store):
         )
 
 
-def check_methods(catalog, schema):
+def check_methods(
+    catalog,
+    schema
+):
     methods = catalog.discover()
 
     if not methods:
-        print("[i] No methods installed.")
+        print(
+            "[i] No methods installed."
+        )
         return False
 
     valid = 0
@@ -198,7 +241,9 @@ def check_methods(catalog, schema):
     print()
     print("-" * 24)
 
-    total = valid + invalid
+    total = (
+        valid + invalid
+    )
 
     print(
         f"{total} methods checked"
@@ -212,7 +257,9 @@ def check_methods(catalog, schema):
         f"{invalid} invalid"
     )
 
-    return invalid == 0
+    return (
+        invalid == 0
+    )
 
 
 def get_method_and_preset(
@@ -242,11 +289,14 @@ def get_method_and_preset(
     if method is None:
         raise ValueError(
             f"Method referenced by preset "
-            f"does not exist: {method_id}"
+            f"does not exist: "
+            f"{method_id}"
         )
 
-    schema_errors = schema.validate(
-        method
+    schema_errors = (
+        schema.validate(
+            method
+        )
     )
 
     if schema_errors:
@@ -256,25 +306,34 @@ def get_method_and_preset(
 
         raise ValueError(
             f"Invalid method contract "
-            f"'{method_id}': {message}"
+            f"'{method_id}': "
+            f"{message}"
         )
 
-    template = method.get(
-        "template"
+    method_path = Path(
+        method["_path"]
     )
 
-    template_path = (
-        Path(method["_path"])
-        / template
-    )
-
-    if not template_path.exists():
-        raise FileNotFoundError(
-            f"Method template does not exist: "
-            f"{template_path}"
+    for source in method.get(
+        "sources",
+        []
+    ):
+        template_path = (
+            method_path
+            / source["template"]
         )
 
-    return method, preset
+        if not template_path.exists():
+            raise FileNotFoundError(
+                f"Method template does "
+                f"not exist: "
+                f"{template_path}"
+            )
+
+    return (
+        method,
+        preset
+    )
 
 
 def run_compatibility_check(
@@ -380,6 +439,11 @@ def validate_preset(
         f"{method.get('requires_payload', False)}"
     )
 
+    print(
+        f"    Sources      : "
+        f"{len(method.get('sources', []))}"
+    )
+
     return True
 
 
@@ -446,7 +510,9 @@ def create_build(
         if payload_path is not None:
             payload_info = (
                 payload_manager.prepare(
-                    Path(payload_path),
+                    Path(
+                        payload_path
+                    ),
                     build_dir
                 )
             )
@@ -472,7 +538,7 @@ def create_build(
                 f"{payload_info['sha256']}"
             )
 
-        source_path = (
+        generated_files = (
             generator.generate(
                 method=method,
                 preset=preset,
@@ -484,28 +550,37 @@ def create_build(
         )
 
         print(
-            f"[+] Source generated: "
-            f"{source_path.name}"
+            f"[+] Sources generated: "
+            f"{len(generated_files)}"
         )
+
+        for item in generated_files:
+            print(
+                f"    - "
+                f"{item['path'].name} "
+                f"("
+                f"{'compile' if item['compile'] else 'asset'}"
+                f")"
+            )
 
         result = compiler.compile(
             method=method,
             preset=preset,
-            source_path=source_path,
+            generated_files=generated_files,
             build_dir=build_dir
         )
 
         manifest = (
             manager.mark_success(
                 build_dir=build_dir,
-                source_path=source_path,
+                generated_files=generated_files,
                 compile_result=result
             )
         )
 
-        output_path = result[
-            "output"
-        ]
+        output_path = (
+            result["output"]
+        )
 
         print(
             "[+] Compilation successful"
@@ -564,8 +639,8 @@ def create_build(
         )
 
         print(
-            f"    Source       : "
-            f"{source_path}"
+            f"    Sources      : "
+            f"{len(generated_files)}"
         )
 
         print(
@@ -595,18 +670,22 @@ def create_build(
                     build_dir,
                     exc
                 )
+
             except Exception:
                 pass
 
         print(
-            f"[!] Build failed: {exc}"
+            f"[!] Build failed: "
+            f"{exc}"
         )
 
 
 def build_parser():
     parser = argparse.ArgumentParser(
         prog="mifa",
-        description="Mifa modular build system"
+        description=(
+            "Mifa modular build system"
+        )
     )
 
     subparsers = (
@@ -628,7 +707,10 @@ def build_parser():
     info_parser = (
         subparsers.add_parser(
             "info",
-            help="Show information about a method"
+            help=(
+                "Show information "
+                "about a method"
+            )
         )
     )
 
@@ -657,7 +739,10 @@ def build_parser():
     build_command = (
         subparsers.add_parser(
             "build",
-            help="Generate and compile a new build"
+            help=(
+                "Generate and compile "
+                "a new build"
+            )
         )
     )
 
@@ -698,11 +783,23 @@ def main():
         BUILDS_DIR
     )
 
-    generator = SourceGenerator()
+    generator = (
+        SourceGenerator()
+    )
+
     compiler = Compiler()
-    payload_manager = PayloadManager()
-    compatibility = CompatibilityChecker()
-    schema = MethodSchemaValidator()
+
+    payload_manager = (
+        PayloadManager()
+    )
+
+    compatibility = (
+        CompatibilityChecker()
+    )
+
+    schema = (
+        MethodSchemaValidator()
+    )
 
     show_banner()
 

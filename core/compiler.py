@@ -1,21 +1,43 @@
-from pathlib import Path
 import shutil
 import subprocess
 
 
 class Compiler:
     COMPILERS = {
-        ("c", "x64"): "x86_64-w64-mingw32-gcc",
-        ("c", "x86"): "i686-w64-mingw32-gcc",
+        ("c", "x64"):
+            "x86_64-w64-mingw32-gcc",
+
+        ("c", "x86"):
+            "i686-w64-mingw32-gcc"
     }
 
-    def compile(self, method, preset, source_path: Path, build_dir: Path):
-        language = method.get("language")
-        architecture = preset.get("architecture")
-        build_type = preset.get("build_type", "release")
+    def compile(
+        self,
+        method,
+        preset,
+        generated_files,
+        build_dir
+    ):
+        language = method.get(
+            "language"
+        )
 
-        compiler_name = self.COMPILERS.get(
-            (language, architecture)
+        architecture = preset.get(
+            "architecture"
+        )
+
+        build_type = preset.get(
+            "build_type",
+            "release"
+        )
+
+        compiler_name = (
+            self.COMPILERS.get(
+                (
+                    language,
+                    architecture
+                )
+            )
         )
 
         if compiler_name is None:
@@ -24,43 +46,75 @@ class Compiler:
                 f"{language}/{architecture}"
             )
 
-        compiler_path = shutil.which(compiler_name)
+        compiler_path = shutil.which(
+            compiler_name
+        )
 
         if compiler_path is None:
             raise RuntimeError(
-                f"Compiler not found: {compiler_name}"
+                f"Compiler not found: "
+                f"{compiler_name}"
             )
 
-        output_dir = build_dir / "output"
+        compile_sources = [
+            item["path"]
+            for item in generated_files
+            if item["compile"]
+        ]
+
+        if not compile_sources:
+            raise RuntimeError(
+                "No compilable source files "
+                "were generated"
+            )
+
+        output_dir = (
+            build_dir / "output"
+        )
+
         output_dir.mkdir(
             parents=True,
             exist_ok=True
         )
 
-        output_name = method.get(
-            "output_name",
-            "output.exe"
+        output_path = (
+            output_dir
+            / method.get(
+                "output_name",
+                "output.exe"
+            )
         )
 
-        output_path = output_dir / output_name
-
         command = [
-            compiler_path,
-            str(source_path),
-            "-o",
-            str(output_path)
+            compiler_path
         ]
 
+        command.extend(
+            str(path)
+            for path in compile_sources
+        )
+
+        command.extend([
+            "-o",
+            str(output_path)
+        ])
+
         if build_type == "release":
-            command.extend([
+            command.append(
                 "-O2"
-            ])
+            )
 
         elif build_type == "debug":
             command.extend([
                 "-O0",
                 "-g"
             ])
+
+        else:
+            raise ValueError(
+                f"Unsupported build type: "
+                f"{build_type}"
+            )
 
         result = subprocess.run(
             command,
@@ -81,9 +135,18 @@ class Compiler:
             )
 
         return {
-            "compiler": compiler_name,
-            "command": command,
-            "output": output_path,
-            "stdout": result.stdout.strip(),
-            "stderr": result.stderr.strip()
+            "compiler":
+                compiler_name,
+
+            "command":
+                command,
+
+            "output":
+                output_path,
+
+            "stdout":
+                result.stdout.strip(),
+
+            "stderr":
+                result.stderr.strip()
         }
