@@ -16,7 +16,8 @@ class MethodSchemaValidator:
     }
 
     SUPPORTED_LANGUAGES = {
-        "c"
+        "c",
+        "cpp"
     }
 
     def validate(self, method):

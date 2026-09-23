@@ -8,7 +8,13 @@ class Compiler:
             "x86_64-w64-mingw32-gcc",
 
         ("c", "x86"):
-            "i686-w64-mingw32-gcc"
+            "i686-w64-mingw32-gcc",
+
+        ("cpp", "x64"):
+            "x86_64-w64-mingw32-g++",
+
+        ("cpp", "x86"):
+            "i686-w64-mingw32-g++"
     }
 
     def compile(
@@ -31,12 +37,10 @@ class Compiler:
             "release"
         )
 
-        compiler_name = (
-            self.COMPILERS.get(
-                (
-                    language,
-                    architecture
-                )
+        compiler_name = self.COMPILERS.get(
+            (
+                language,
+                architecture
             )
         )
 
@@ -98,6 +102,11 @@ class Compiler:
             "-o",
             str(output_path)
         ])
+
+        if language == "cpp":
+            command.append(
+                "-std=c++17"
+            )
 
         if build_type == "release":
             command.append(

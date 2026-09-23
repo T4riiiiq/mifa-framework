@@ -1,0 +1,28 @@
+{
+  "id": "cpp-hello",
+  "name": "C++ Hello",
+  "language": "cpp",
+  "description": "Harmless multi-file C++ method used to validate the Mifa C++ toolchain.",
+  "architectures": ["x64", "x86"],
+  "requires_payload": false,
+  "payload_types": [],
+  "requires_target": false,
+  "sources": [
+    {
+      "template": "templates/main.cpp.tmpl",
+      "output": "main.cpp",
+      "compile": true
+    },
+    {
+      "template": "templates/message.cpp.tmpl",
+      "output": "message.cpp",
+      "compile": true
+    },
+    {
+      "template": "templates/message.hpp.tmpl",
+      "output": "message.hpp",
+      "compile": false
+    }
+  ],
+  "output_name": "cpp-hello.exe"
+}

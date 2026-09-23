@@ -1,0 +1,7 @@
+{
+  "id": "cpp-hello-x64",
+  "name": "C++ Hello x64",
+  "method": "cpp-hello",
+  "architecture": "x64",
+  "build_type": "release"
+}
