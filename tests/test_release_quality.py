@@ -56,12 +56,12 @@ class ReleaseQualityTests(
 
         self.assertEqual(
             method_count,
-            28
+            34
         )
 
         self.assertEqual(
             preset_count,
-            48
+            60
         )
 
     def test_all_presets_reference_existing_methods(

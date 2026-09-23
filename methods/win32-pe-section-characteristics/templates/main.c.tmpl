@@ -1,0 +1,97 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
+
+static uint16_t rd16(const unsigned char *p) {
+    return (uint16_t)p[0] | ((uint16_t)p[1] << 8);
+}
+static uint32_t rd32(const unsigned char *p) {
+    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+}
+static int span_ok(size_t size, size_t offset, size_t need) {
+    return offset <= size && need <= size - offset;
+}
+static unsigned char *read_all(const char *path, size_t max_size, size_t *out_size) {
+    FILE *f = fopen(path, "rb");
+    long length;
+    unsigned char *data;
+    size_t got;
+    if (!f) return NULL;
+    if (fseek(f, 0, SEEK_END) != 0) { fclose(f); return NULL; }
+    length = ftell(f);
+    if (length < 0 || (size_t)length > max_size) { fclose(f); return NULL; }
+    if (fseek(f, 0, SEEK_SET) != 0) { fclose(f); return NULL; }
+    data = (unsigned char *)malloc((size_t)length ? (size_t)length : 1);
+    if (!data) { fclose(f); return NULL; }
+    got = fread(data, 1, (size_t)length, f);
+    fclose(f);
+    if (got != (size_t)length) { free(data); return NULL; }
+    *out_size = got;
+    return data;
+}
+
+int main(int argc, char **argv) {
+    const size_t max_file = (size_t){{PARAM_MAX_FILE_BYTES}};
+    const unsigned max_sections = (unsigned){{PARAM_MAX_SECTIONS}};
+    unsigned char *data;
+    size_t size, pe, coff, opt, table;
+    uint16_t section_count, opt_size;
+    unsigned shown;
+
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <pe_path>\n", argv[0]);
+        return 2;
+    }
+    data = read_all(argv[1], max_file, &size);
+    if (!data) {
+        fprintf(stderr, "Unable to read file or file exceeds limit\n");
+        return 3;
+    }
+    if (!span_ok(size, 0, 0x40) || data[0] != 'M' || data[1] != 'Z') {
+        fprintf(stderr, "Not an MZ file\n"); free(data); return 4;
+    }
+    pe = (size_t)rd32(data + 0x3c);
+    if (!span_ok(size, pe, 24) || memcmp(data + pe, "PE\0\0", 4) != 0) {
+        fprintf(stderr, "Invalid PE signature or header bounds\n"); free(data); return 5;
+    }
+    coff = pe + 4;
+    section_count = rd16(data + coff + 2);
+    opt_size = rd16(data + coff + 16);
+    opt = coff + 20;
+    if (!span_ok(size, opt, opt_size)) {
+        fprintf(stderr, "Invalid optional header bounds\n"); free(data); return 6;
+    }
+    table = opt + opt_size;
+    if (!span_ok(size, table, (size_t)section_count * 40u)) {
+        fprintf(stderr, "Invalid section-table bounds\n"); free(data); return 7;
+    }
+    shown = section_count < max_sections ? section_count : max_sections;
+    printf("Mifa PE Section Characteristics\n");
+    printf("Build        : {{BUILD_ID}}\n");
+    printf("Architecture : {{ARCH}}\n");
+    printf("File         : %s\n", argv[1]);
+    printf("Sections     : %u (showing %u)\n", (unsigned)section_count, shown);
+    printf("\n%-9s %-10s %-10s %-10s %-10s %-10s\n",
+           "NAME", "RVA", "VSIZE", "RAW", "RAWSIZE", "CHAR");
+
+    for (unsigned i = 0; i < shown; ++i) {
+        const unsigned char *s = data + table + ((size_t)i * 40u);
+        char name[9] = {0};
+        memcpy(name, s, 8);
+        printf("%-9s 0x%08lX 0x%08lX 0x%08lX 0x%08lX 0x%08lX\n",
+               name,
+               (unsigned long)rd32(s + 12),
+               (unsigned long)rd32(s + 8),
+               (unsigned long)rd32(s + 20),
+               (unsigned long)rd32(s + 16),
+               (unsigned long)rd32(s + 36));
+    }
+    if ((unsigned)section_count > shown) {
+        printf("[i] %u additional section(s) omitted by max_sections\n",
+               (unsigned)section_count - shown);
+    }
+    printf("Image loaded : no\n");
+    free(data);
+    return 0;
+}

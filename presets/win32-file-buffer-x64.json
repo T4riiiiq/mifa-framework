@@ -1,0 +1,11 @@
+{
+  "id": "win32-file-buffer-x64",
+  "name": "win32-file-buffer x64",
+  "method": "win32-file-buffer",
+  "architecture": "x64",
+  "build_type": "release",
+  "parameters": {
+    "max_read_bytes": 4096,
+    "preview_bytes": 64
+  }
+}

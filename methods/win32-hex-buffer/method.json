@@ -1,0 +1,52 @@
+{
+  "id": "win32-hex-buffer",
+  "name": "Win32 Hex Buffer Decoder",
+  "language": "c",
+  "description": "Decode a bounded hexadecimal text file into a local data buffer, print size and a short preview, then release the buffer without execution.",
+  "architectures": [
+    "x64",
+    "x86"
+  ],
+  "requires_payload": false,
+  "payload_types": [],
+  "build_types": [
+    "release",
+    "debug"
+  ],
+  "parameters": {
+    "max_input_bytes": {
+      "type": "int",
+      "required": false,
+      "default": 1048576,
+      "min": 2,
+      "max": 16777216,
+      "render": "raw",
+      "description": "Maximum hexadecimal input file size"
+    },
+    "preview_bytes": {
+      "type": "int",
+      "required": false,
+      "default": 64,
+      "min": 1,
+      "max": 256,
+      "render": "raw",
+      "description": "Maximum decoded bytes to print"
+    }
+  },
+  "runtime_arguments": [
+    {
+      "name": "hex_path",
+      "type": "path",
+      "required": true,
+      "description": "Hexadecimal text file to decode locally"
+    }
+  ],
+  "sources": [
+    {
+      "template": "templates/main.c.tmpl",
+      "output": "main.c",
+      "compile": true
+    }
+  ],
+  "output_name": "win32-hex-buffer.exe"
+}

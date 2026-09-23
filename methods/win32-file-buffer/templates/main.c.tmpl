@@ -1,0 +1,85 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+
+static void print_preview(const unsigned char *data, size_t size, size_t limit) {
+    size_t shown = size < limit ? size : limit;
+    for (size_t i = 0; i < shown; ++i) {
+        if ((i % 16) == 0) {
+            printf("  ");
+        }
+        printf("%02X", data[i]);
+        if ((i % 16) == 15 || i + 1 == shown) {
+            printf("\n");
+        } else {
+            printf(" ");
+        }
+    }
+}
+
+int main(int argc, char **argv) {
+    const size_t max_read = (size_t){{PARAM_MAX_READ_BYTES}};
+    const size_t preview = (size_t){{PARAM_PREVIEW_BYTES}};
+    FILE *file = NULL;
+    unsigned char *buffer = NULL;
+    long length = 0;
+    size_t to_read = 0;
+    size_t read_bytes = 0;
+    int rc = 1;
+
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <file_path>\n", argv[0]);
+        return 2;
+    }
+
+    file = fopen(argv[1], "rb");
+    if (!file) {
+        fprintf(stderr, "Unable to open file\n");
+        return 3;
+    }
+
+    if (fseek(file, 0, SEEK_END) != 0) {
+        fprintf(stderr, "Unable to seek file\n");
+        goto cleanup;
+    }
+
+    length = ftell(file);
+    if (length < 0) {
+        fprintf(stderr, "Unable to determine file size\n");
+        goto cleanup;
+    }
+
+    if (fseek(file, 0, SEEK_SET) != 0) {
+        fprintf(stderr, "Unable to rewind file\n");
+        goto cleanup;
+    }
+
+    to_read = ((size_t)length < max_read) ? (size_t)length : max_read;
+    buffer = (unsigned char *)malloc(to_read ? to_read : 1);
+    if (!buffer) {
+        fprintf(stderr, "Local buffer allocation failed\n");
+        goto cleanup;
+    }
+
+    read_bytes = fread(buffer, 1, to_read, file);
+    if (read_bytes != to_read) {
+        fprintf(stderr, "Unable to read requested bytes\n");
+        goto cleanup;
+    }
+
+    printf("Mifa Local File Buffer\n");
+    printf("Build         : {{BUILD_ID}}\n");
+    printf("Architecture  : {{ARCH}}\n");
+    printf("File          : %s\n", argv[1]);
+    printf("File size     : %ld bytes\n", length);
+    printf("Buffered      : %llu bytes\n", (unsigned long long)read_bytes);
+    printf("Buffer access : local data only\n");
+    printf("Preview       :\n");
+    print_preview(buffer, read_bytes, preview);
+    rc = 0;
+
+cleanup:
+    free(buffer);
+    if (file) fclose(file);
+    return rc;
+}

@@ -1,0 +1,10 @@
+{
+  "id": "win32-pe-runtime-info-x86",
+  "name": "win32-pe-runtime-info x86",
+  "method": "win32-pe-runtime-info",
+  "architecture": "x86",
+  "build_type": "release",
+  "parameters": {
+    "max_file_bytes": 16777216
+  }
+}

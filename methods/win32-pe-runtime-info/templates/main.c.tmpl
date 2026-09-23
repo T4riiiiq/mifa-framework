@@ -1,0 +1,105 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
+
+static uint16_t rd16(const unsigned char *p) {
+    return (uint16_t)p[0] | ((uint16_t)p[1] << 8);
+}
+static uint32_t rd32(const unsigned char *p) {
+    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+}
+static uint64_t rd64(const unsigned char *p) {
+    return (uint64_t)rd32(p) | ((uint64_t)rd32(p + 4) << 32);
+}
+static int span_ok(size_t size, size_t offset, size_t need) {
+    return offset <= size && need <= size - offset;
+}
+static unsigned char *read_all(const char *path, size_t max_size, size_t *out_size) {
+    FILE *f = fopen(path, "rb");
+    long length;
+    unsigned char *data;
+    size_t got;
+    if (!f) return NULL;
+    if (fseek(f, 0, SEEK_END) != 0) { fclose(f); return NULL; }
+    length = ftell(f);
+    if (length < 0 || (size_t)length > max_size) { fclose(f); return NULL; }
+    if (fseek(f, 0, SEEK_SET) != 0) { fclose(f); return NULL; }
+    data = (unsigned char *)malloc((size_t)length ? (size_t)length : 1);
+    if (!data) { fclose(f); return NULL; }
+    got = fread(data, 1, (size_t)length, f);
+    fclose(f);
+    if (got != (size_t)length) { free(data); return NULL; }
+    *out_size = got;
+    return data;
+}
+static const char *machine_name(uint16_t machine) {
+    if (machine == 0x014c) return "x86";
+    if (machine == 0x8664) return "x64";
+    if (machine == 0xAA64) return "ARM64";
+    return "other";
+}
+
+int main(int argc, char **argv) {
+    const size_t max_size = (size_t){{PARAM_MAX_FILE_BYTES}};
+    unsigned char *data;
+    size_t size, pe, coff, opt;
+    uint16_t machine, sections, opt_size, magic, subsystem;
+    uint32_t entry_rva, size_of_image;
+    uint64_t image_base;
+
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <pe_path>\n", argv[0]);
+        return 2;
+    }
+    data = read_all(argv[1], max_size, &size);
+    if (!data) {
+        fprintf(stderr, "Unable to read file or file exceeds limit\n");
+        return 3;
+    }
+    if (!span_ok(size, 0, 0x40) || data[0] != 'M' || data[1] != 'Z') {
+        fprintf(stderr, "Not an MZ file\n"); free(data); return 4;
+    }
+    pe = (size_t)rd32(data + 0x3c);
+    if (!span_ok(size, pe, 24) || memcmp(data + pe, "PE\0\0", 4) != 0) {
+        fprintf(stderr, "Invalid PE signature or header bounds\n"); free(data); return 5;
+    }
+    coff = pe + 4;
+    machine = rd16(data + coff);
+    sections = rd16(data + coff + 2);
+    opt_size = rd16(data + coff + 16);
+    opt = coff + 20;
+    if (!span_ok(size, opt, opt_size) || opt_size < 70) {
+        fprintf(stderr, "Invalid optional header bounds\n"); free(data); return 6;
+    }
+    magic = rd16(data + opt);
+    entry_rva = rd32(data + opt + 16);
+    size_of_image = rd32(data + opt + 56);
+    subsystem = rd16(data + opt + 68);
+    if (magic == 0x10b) {
+        if (opt_size < 70) { free(data); return 6; }
+        image_base = rd32(data + opt + 28);
+    } else if (magic == 0x20b) {
+        if (opt_size < 70) { free(data); return 6; }
+        image_base = rd64(data + opt + 24);
+    } else {
+        fprintf(stderr, "Unsupported PE optional-header magic: 0x%04X\n", magic);
+        free(data); return 7;
+    }
+
+    printf("Mifa Runtime PE Information\n");
+    printf("Build          : {{BUILD_ID}}\n");
+    printf("Tool arch      : {{ARCH}}\n");
+    printf("File           : %s\n", argv[1]);
+    printf("File size      : %llu bytes\n", (unsigned long long)size);
+    printf("Machine        : 0x%04X (%s)\n", machine, machine_name(machine));
+    printf("PE format      : %s\n", magic == 0x20b ? "PE32+" : "PE32");
+    printf("Sections       : %u\n", (unsigned)sections);
+    printf("Entry point RVA: 0x%08lX\n", (unsigned long)entry_rva);
+    printf("Image base     : 0x%llX\n", (unsigned long long)image_base);
+    printf("Size of image  : 0x%08lX\n", (unsigned long)size_of_image);
+    printf("Subsystem      : 0x%04X\n", subsystem);
+    printf("Image loaded   : no\n");
+    free(data);
+    return 0;
+}

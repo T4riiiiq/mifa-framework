@@ -1,0 +1,11 @@
+{
+  "id": "win32-hex-buffer-x86",
+  "name": "win32-hex-buffer x86",
+  "method": "win32-hex-buffer",
+  "architecture": "x86",
+  "build_type": "release",
+  "parameters": {
+    "max_input_bytes": 1048576,
+    "preview_bytes": 64
+  }
+}

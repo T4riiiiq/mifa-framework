@@ -1,0 +1,11 @@
+{
+  "id": "win32-pe-section-characteristics-x64",
+  "name": "win32-pe-section-characteristics x64",
+  "method": "win32-pe-section-characteristics",
+  "architecture": "x64",
+  "build_type": "release",
+  "parameters": {
+    "max_file_bytes": 16777216,
+    "max_sections": 32
+  }
+}
