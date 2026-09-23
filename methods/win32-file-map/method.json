@@ -1,0 +1,43 @@
+{
+  "id": "win32-file-map",
+  "name": "Win32 Read-Only File Mapping",
+  "language": "cpp",
+  "description": "Create a read-only file mapping, map a bounded view, print metadata and a short hex preview, then release it.",
+  "architectures": [
+    "x64",
+    "x86"
+  ],
+  "requires_payload": false,
+  "payload_types": [],
+  "build_types": [
+    "release",
+    "debug"
+  ],
+  "parameters": {
+    "preview_bytes": {
+      "type": "int",
+      "required": false,
+      "default": 64,
+      "min": 1,
+      "max": 256,
+      "render": "raw",
+      "description": "Maximum mapped bytes to print"
+    }
+  },
+  "runtime_arguments": [
+    {
+      "name": "file_path",
+      "type": "path",
+      "required": true,
+      "description": "File to map read-only"
+    }
+  ],
+  "sources": [
+    {
+      "template": "templates/main.cpp.tmpl",
+      "output": "main.cpp",
+      "compile": true
+    }
+  ],
+  "output_name": "win32-file-map.exe"
+}

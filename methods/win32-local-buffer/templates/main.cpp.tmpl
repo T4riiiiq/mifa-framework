@@ -1,0 +1,202 @@
+#include <windows.h>
+#include <iostream>
+#include <iomanip>
+#include <cstring>
+#include <cstdint>
+
+static void print_region(
+    const MEMORY_BASIC_INFORMATION& mbi
+)
+{
+    std::cout
+        << "Base         : 0x"
+        << std::hex
+        << std::uppercase
+        << reinterpret_cast<std::uintptr_t>(
+            mbi.BaseAddress
+        )
+        << std::dec
+        << std::endl;
+
+    std::cout
+        << "Region size  : "
+        << static_cast<unsigned long long>(
+            mbi.RegionSize
+        )
+        << std::endl;
+
+    std::cout
+        << "Protection   : 0x"
+        << std::hex
+        << std::uppercase
+        << mbi.Protect
+        << std::dec
+        << std::endl;
+}
+
+int main()
+{
+    const SIZE_T buffer_size =
+        static_cast<SIZE_T>(
+            {{PARAM_BUFFER_SIZE}}
+        );
+
+    const unsigned char fill_byte =
+        static_cast<unsigned char>(
+            {{PARAM_FILL_BYTE}}
+        );
+
+    void* buffer = VirtualAlloc(
+        nullptr,
+        buffer_size,
+        MEM_RESERVE | MEM_COMMIT,
+        PAGE_READWRITE
+    );
+
+    if (buffer == nullptr)
+    {
+        std::cerr
+            << "[!] VirtualAlloc failed: "
+            << GetLastError()
+            << std::endl;
+
+        return 1;
+    }
+
+    std::memset(
+        buffer,
+        fill_byte,
+        buffer_size
+    );
+
+    MEMORY_BASIC_INFORMATION before{};
+
+    if (
+        VirtualQuery(
+            buffer,
+            &before,
+            sizeof(before)
+        ) == 0
+    )
+    {
+        std::cerr
+            << "[!] VirtualQuery failed: "
+            << GetLastError()
+            << std::endl;
+
+        VirtualFree(
+            buffer,
+            0,
+            MEM_RELEASE
+        );
+
+        return 2;
+    }
+
+    std::cout
+        << "Build        : {{BUILD_ID}}"
+        << std::endl;
+
+    std::cout
+        << "Architecture : {{ARCH}}"
+        << std::endl;
+
+    std::cout
+        << "Buffer size  : "
+        << buffer_size
+        << std::endl;
+
+    std::cout
+        << "Fill byte    : "
+        << static_cast<unsigned int>(
+            fill_byte
+        )
+        << std::endl;
+
+    std::cout
+        << "[Before]"
+        << std::endl;
+
+    print_region(
+        before
+    );
+
+    DWORD old_protection = 0;
+
+    if (
+        !VirtualProtect(
+            buffer,
+            buffer_size,
+            PAGE_READONLY,
+            &old_protection
+        )
+    )
+    {
+        std::cerr
+            << "[!] VirtualProtect failed: "
+            << GetLastError()
+            << std::endl;
+
+        VirtualFree(
+            buffer,
+            0,
+            MEM_RELEASE
+        );
+
+        return 3;
+    }
+
+    MEMORY_BASIC_INFORMATION after{};
+
+    if (
+        VirtualQuery(
+            buffer,
+            &after,
+            sizeof(after)
+        ) == 0
+    )
+    {
+        std::cerr
+            << "[!] VirtualQuery failed: "
+            << GetLastError()
+            << std::endl;
+
+        VirtualFree(
+            buffer,
+            0,
+            MEM_RELEASE
+        );
+
+        return 4;
+    }
+
+    std::cout
+        << "[After]"
+        << std::endl;
+
+    print_region(
+        after
+    );
+
+    if (
+        !VirtualFree(
+            buffer,
+            0,
+            MEM_RELEASE
+        )
+    )
+    {
+        std::cerr
+            << "[!] VirtualFree failed: "
+            << GetLastError()
+            << std::endl;
+
+        return 5;
+    }
+
+    std::cout
+        << "Released     : yes"
+        << std::endl;
+
+    return 0;
+}

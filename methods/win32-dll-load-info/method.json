@@ -1,0 +1,33 @@
+{
+  "id": "win32-dll-load-info",
+  "name": "Win32 DLL Load Information",
+  "language": "cpp",
+  "description": "Map a DLL with DONT_RESOLVE_DLL_REFERENCES, report basic module information, and release the mapping.",
+  "architectures": [
+    "x64",
+    "x86"
+  ],
+  "requires_payload": false,
+  "payload_types": [],
+  "build_types": [
+    "release",
+    "debug"
+  ],
+  "parameters": {},
+  "runtime_arguments": [
+    {
+      "name": "dll_path",
+      "type": "path",
+      "required": true,
+      "description": "DLL path to map without resolving dependencies"
+    }
+  ],
+  "sources": [
+    {
+      "template": "templates/main.cpp.tmpl",
+      "output": "main.cpp",
+      "compile": true
+    }
+  ],
+  "output_name": "win32-dll-load-info.exe"
+}

@@ -1,0 +1,28 @@
+#include "runtime_helper.h"
+
+#include <iostream>
+
+int main(
+    int argc,
+    char* argv[]
+)
+{
+    const char* prefix =
+        "{{PARAM_PREFIX}}";
+
+    std::cout
+        << prefix
+        << " / Build {{BUILD_ID}}"
+        << std::endl;
+
+    std::cout
+        << "Architecture : {{ARCH}}"
+        << std::endl;
+
+    runtime_helper::print_summary(
+        argc,
+        argv
+    );
+
+    return 0;
+}

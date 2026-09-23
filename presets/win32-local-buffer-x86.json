@@ -1,0 +1,11 @@
+{
+  "id": "win32-local-buffer-x86",
+  "name": "win32-local-buffer x86",
+  "method": "win32-local-buffer",
+  "architecture": "x86",
+  "build_type": "release",
+  "parameters": {
+    "buffer_size": 4096,
+    "fill_byte": 65
+  }
+}

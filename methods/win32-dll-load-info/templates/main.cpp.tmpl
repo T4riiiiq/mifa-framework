@@ -1,0 +1,99 @@
+#include <windows.h>
+#include <iostream>
+#include <iomanip>
+#include <cstdint>
+
+int main(
+    int argc,
+    char* argv[]
+)
+{
+    if (argc != 2)
+    {
+        std::cerr
+            << "Usage: "
+            << argv[0]
+            << " <dll-path>"
+            << std::endl;
+
+        return 1;
+    }
+
+    HMODULE module = LoadLibraryExA(
+        argv[1],
+        nullptr,
+        DONT_RESOLVE_DLL_REFERENCES
+    );
+
+    if (module == nullptr)
+    {
+        std::cerr
+            << "[!] LoadLibraryExA failed: "
+            << GetLastError()
+            << std::endl;
+
+        return 2;
+    }
+
+    char module_path[MAX_PATH]{};
+
+    DWORD path_length = GetModuleFileNameA(
+        module,
+        module_path,
+        MAX_PATH
+    );
+
+    std::cout
+        << "Build        : {{BUILD_ID}}"
+        << std::endl;
+
+    std::cout
+        << "Architecture : {{ARCH}}"
+        << std::endl;
+
+    std::cout
+        << "Handle       : 0x"
+        << std::hex
+        << std::uppercase
+        << reinterpret_cast<std::uintptr_t>(
+            module
+        )
+        << std::dec
+        << std::endl;
+
+    if (path_length > 0)
+    {
+        std::cout
+            << "Mapped file  : "
+            << module_path
+            << std::endl;
+    }
+    else
+    {
+        std::cout
+            << "Mapped file  : "
+            << argv[1]
+            << std::endl;
+    }
+
+    std::cout
+        << "Init called  : no "
+        << "(DONT_RESOLVE_DLL_REFERENCES)"
+        << std::endl;
+
+    if (
+        !FreeLibrary(
+            module
+        )
+    )
+    {
+        std::cerr
+            << "[!] FreeLibrary failed: "
+            << GetLastError()
+            << std::endl;
+
+        return 3;
+    }
+
+    return 0;
+}

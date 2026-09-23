@@ -1,0 +1,45 @@
+{
+  "id": "win32-local-buffer",
+  "name": "Win32 Local Buffer Lifecycle",
+  "language": "cpp",
+  "description": "Allocate a local read/write buffer, fill it, transition it to read-only, inspect it, and release it.",
+  "architectures": [
+    "x64",
+    "x86"
+  ],
+  "requires_payload": false,
+  "payload_types": [],
+  "build_types": [
+    "release",
+    "debug"
+  ],
+  "parameters": {
+    "buffer_size": {
+      "type": "int",
+      "required": false,
+      "default": 4096,
+      "min": 1,
+      "max": 1048576,
+      "render": "raw",
+      "description": "Local allocation size in bytes"
+    },
+    "fill_byte": {
+      "type": "int",
+      "required": false,
+      "default": 65,
+      "min": 0,
+      "max": 255,
+      "render": "raw",
+      "description": "Byte value used to initialize the local buffer"
+    }
+  },
+  "runtime_arguments": [],
+  "sources": [
+    {
+      "template": "templates/main.cpp.tmpl",
+      "output": "main.cpp",
+      "compile": true
+    }
+  ],
+  "output_name": "win32-local-buffer.exe"
+}

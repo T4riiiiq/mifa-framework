@@ -1,0 +1,149 @@
+#include <windows.h>
+#include <iostream>
+
+struct WorkerContext
+{
+    int iterations;
+    DWORD delay_ms;
+};
+
+static DWORD WINAPI worker(
+    LPVOID parameter
+)
+{
+    auto* context =
+        static_cast<WorkerContext*>(
+            parameter
+        );
+
+    for (
+        int index = 0;
+        index < context->iterations;
+        ++index
+    )
+    {
+        std::cout
+            << "Worker iteration "
+            << (index + 1)
+            << " / "
+            << context->iterations
+            << std::endl;
+
+        if (context->delay_ms > 0)
+        {
+            Sleep(
+                context->delay_ms
+            );
+        }
+    }
+
+    return 0x4D46;
+}
+
+int main()
+{
+    WorkerContext context{
+        {{PARAM_ITERATIONS}},
+        static_cast<DWORD>(
+            {{PARAM_DELAY_MS}}
+        )
+    };
+
+    std::cout
+        << "Build        : {{BUILD_ID}}"
+        << std::endl;
+
+    std::cout
+        << "Architecture : {{ARCH}}"
+        << std::endl;
+
+    std::cout
+        << "Iterations   : "
+        << context.iterations
+        << std::endl;
+
+    std::cout
+        << "Delay (ms)   : "
+        << context.delay_ms
+        << std::endl;
+
+    DWORD thread_id = 0;
+
+    HANDLE thread = CreateThread(
+        nullptr,
+        0,
+        worker,
+        &context,
+        0,
+        &thread_id
+    );
+
+    if (thread == nullptr)
+    {
+        std::cerr
+            << "[!] CreateThread failed: "
+            << GetLastError()
+            << std::endl;
+
+        return 1;
+    }
+
+    std::cout
+        << "Thread ID    : "
+        << thread_id
+        << std::endl;
+
+    DWORD wait_result = WaitForSingleObject(
+        thread,
+        INFINITE
+    );
+
+    if (wait_result != WAIT_OBJECT_0)
+    {
+        std::cerr
+            << "[!] WaitForSingleObject failed: "
+            << GetLastError()
+            << std::endl;
+
+        CloseHandle(
+            thread
+        );
+
+        return 2;
+    }
+
+    DWORD exit_code = 0;
+
+    if (
+        !GetExitCodeThread(
+            thread,
+            &exit_code
+        )
+    )
+    {
+        std::cerr
+            << "[!] GetExitCodeThread failed: "
+            << GetLastError()
+            << std::endl;
+
+        CloseHandle(
+            thread
+        );
+
+        return 3;
+    }
+
+    CloseHandle(
+        thread
+    );
+
+    std::cout
+        << "Exit code    : 0x"
+        << std::hex
+        << std::uppercase
+        << exit_code
+        << std::dec
+        << std::endl;
+
+    return 0;
+}

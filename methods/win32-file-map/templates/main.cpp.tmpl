@@ -1,0 +1,214 @@
+#include <windows.h>
+#include <iostream>
+#include <iomanip>
+#include <algorithm>
+#include <cstdint>
+
+int main(
+    int argc,
+    char* argv[]
+)
+{
+    if (argc != 2)
+    {
+        std::cerr
+            << "Usage: "
+            << argv[0]
+            << " <file-path>"
+            << std::endl;
+
+        return 1;
+    }
+
+    HANDLE file = CreateFileA(
+        argv[1],
+        GENERIC_READ,
+        FILE_SHARE_READ
+            | FILE_SHARE_WRITE
+            | FILE_SHARE_DELETE,
+        nullptr,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL,
+        nullptr
+    );
+
+    if (file == INVALID_HANDLE_VALUE)
+    {
+        std::cerr
+            << "[!] CreateFileA failed: "
+            << GetLastError()
+            << std::endl;
+
+        return 2;
+    }
+
+    LARGE_INTEGER file_size{};
+
+    if (
+        !GetFileSizeEx(
+            file,
+            &file_size
+        )
+    )
+    {
+        std::cerr
+            << "[!] GetFileSizeEx failed: "
+            << GetLastError()
+            << std::endl;
+
+        CloseHandle(
+            file
+        );
+
+        return 3;
+    }
+
+    std::cout
+        << "Build        : {{BUILD_ID}}"
+        << std::endl;
+
+    std::cout
+        << "Architecture : {{ARCH}}"
+        << std::endl;
+
+    std::cout
+        << "File         : "
+        << argv[1]
+        << std::endl;
+
+    std::cout
+        << "Size         : "
+        << file_size.QuadPart
+        << " bytes"
+        << std::endl;
+
+    if (file_size.QuadPart == 0)
+    {
+        std::cout
+            << "Preview      : <empty file>"
+            << std::endl;
+
+        CloseHandle(
+            file
+        );
+
+        return 0;
+    }
+
+    HANDLE mapping = CreateFileMappingA(
+        file,
+        nullptr,
+        PAGE_READONLY,
+        0,
+        0,
+        nullptr
+    );
+
+    if (mapping == nullptr)
+    {
+        std::cerr
+            << "[!] CreateFileMappingA failed: "
+            << GetLastError()
+            << std::endl;
+
+        CloseHandle(
+            file
+        );
+
+        return 4;
+    }
+
+    void* view = MapViewOfFile(
+        mapping,
+        FILE_MAP_READ,
+        0,
+        0,
+        0
+    );
+
+    if (view == nullptr)
+    {
+        std::cerr
+            << "[!] MapViewOfFile failed: "
+            << GetLastError()
+            << std::endl;
+
+        CloseHandle(
+            mapping
+        );
+
+        CloseHandle(
+            file
+        );
+
+        return 5;
+    }
+
+    const std::uint64_t preview_limit =
+        static_cast<std::uint64_t>(
+            {{PARAM_PREVIEW_BYTES}}
+        );
+
+    const std::uint64_t available =
+        static_cast<std::uint64_t>(
+            file_size.QuadPart
+        );
+
+    const std::size_t preview =
+        static_cast<std::size_t>(
+            std::min(
+                preview_limit,
+                available
+            )
+        );
+
+    const auto* bytes =
+        static_cast<const unsigned char*>(
+            view
+        );
+
+    std::cout
+        << "Preview      :";
+
+    for (
+        std::size_t index = 0;
+        index < preview;
+        ++index
+    )
+    {
+        if (index % 16 == 0)
+        {
+            std::cout
+                << std::endl
+                << "  ";
+        }
+
+        std::cout
+            << std::hex
+            << std::uppercase
+            << std::setw(2)
+            << std::setfill('0')
+            << static_cast<unsigned int>(
+                bytes[index]
+            )
+            << ' ';
+    }
+
+    std::cout
+        << std::dec
+        << std::endl;
+
+    UnmapViewOfFile(
+        view
+    );
+
+    CloseHandle(
+        mapping
+    );
+
+    CloseHandle(
+        file
+    );
+
+    return 0;
+}

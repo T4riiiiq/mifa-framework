@@ -1,0 +1,10 @@
+{
+  "id": "win32-runtime-helper-x64",
+  "name": "win32-runtime-helper x64",
+  "method": "win32-runtime-helper",
+  "architecture": "x64",
+  "build_type": "release",
+  "parameters": {
+    "prefix": "Mifa"
+  }
+}

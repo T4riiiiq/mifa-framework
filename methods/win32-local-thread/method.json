@@ -1,0 +1,45 @@
+{
+  "id": "win32-local-thread",
+  "name": "Win32 Local Thread Lifecycle",
+  "language": "cpp",
+  "description": "Create and join a benign local worker thread using a normal compiled callback.",
+  "architectures": [
+    "x64",
+    "x86"
+  ],
+  "requires_payload": false,
+  "payload_types": [],
+  "build_types": [
+    "release",
+    "debug"
+  ],
+  "parameters": {
+    "iterations": {
+      "type": "int",
+      "required": false,
+      "default": 3,
+      "min": 1,
+      "max": 100,
+      "render": "raw",
+      "description": "Number of worker loop iterations"
+    },
+    "delay_ms": {
+      "type": "int",
+      "required": false,
+      "default": 25,
+      "min": 0,
+      "max": 5000,
+      "render": "raw",
+      "description": "Delay between worker loop iterations"
+    }
+  },
+  "runtime_arguments": [],
+  "sources": [
+    {
+      "template": "templates/main.cpp.tmpl",
+      "output": "main.cpp",
+      "compile": true
+    }
+  ],
+  "output_name": "win32-local-thread.exe"
+}

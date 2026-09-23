@@ -1,0 +1,114 @@
+#include <windows.h>
+#include <iostream>
+#include <iomanip>
+#include <cstdint>
+
+int main(
+    int argc,
+    char* argv[]
+)
+{
+    if (argc != 3)
+    {
+        std::cerr
+            << "Usage: "
+            << argv[0]
+            << " <module> <symbol>"
+            << std::endl;
+
+        return 1;
+    }
+
+    const char* module_name = argv[1];
+    const char* symbol_name = argv[2];
+
+    HMODULE module = GetModuleHandleA(
+        module_name
+    );
+
+    bool owns_handle = false;
+
+    if (module == nullptr)
+    {
+        module = LoadLibraryExA(
+            module_name,
+            nullptr,
+            DONT_RESOLVE_DLL_REFERENCES
+        );
+
+        owns_handle = (
+            module != nullptr
+        );
+    }
+
+    if (module == nullptr)
+    {
+        std::cerr
+            << "[!] Unable to obtain module handle. "
+            << "Win32 error: "
+            << GetLastError()
+            << std::endl;
+
+        return 2;
+    }
+
+    FARPROC symbol = GetProcAddress(
+        module,
+        symbol_name
+    );
+
+    if (symbol == nullptr)
+    {
+        std::cerr
+            << "[!] Export not found. "
+            << "Win32 error: "
+            << GetLastError()
+            << std::endl;
+
+        if (owns_handle)
+        {
+            FreeLibrary(
+                module
+            );
+        }
+
+        return 3;
+    }
+
+    std::cout
+        << "Build        : {{BUILD_ID}}"
+        << std::endl;
+
+    std::cout
+        << "Architecture : {{ARCH}}"
+        << std::endl;
+
+    std::cout
+        << "Module       : "
+        << module_name
+        << std::endl;
+
+    std::cout
+        << "Symbol       : "
+        << symbol_name
+        << std::endl;
+
+    std::cout
+        << "Address      : 0x"
+        << std::hex
+        << std::uppercase
+        << reinterpret_cast<std::uintptr_t>(
+            symbol
+        )
+        << std::dec
+        << std::endl;
+
+    if (owns_handle)
+    {
+        FreeLibrary(
+            module
+        );
+    }
+
+    return 0;
+}

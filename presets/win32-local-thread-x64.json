@@ -1,0 +1,11 @@
+{
+  "id": "win32-local-thread-x64",
+  "name": "win32-local-thread x64",
+  "method": "win32-local-thread",
+  "architecture": "x64",
+  "build_type": "release",
+  "parameters": {
+    "iterations": 3,
+    "delay_ms": 25
+  }
+}

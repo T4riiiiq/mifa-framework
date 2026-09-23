@@ -1,0 +1,51 @@
+{
+  "id": "win32-runtime-helper",
+  "name": "Win32 Multi-Source Runtime Helper",
+  "language": "cpp",
+  "description": "Regression/foundation method demonstrating a generated multi-source C++ method with a reusable runtime helper.",
+  "architectures": [
+    "x64",
+    "x86"
+  ],
+  "requires_payload": false,
+  "payload_types": [],
+  "build_types": [
+    "release",
+    "debug"
+  ],
+  "parameters": {
+    "prefix": {
+      "type": "str",
+      "required": false,
+      "default": "Mifa",
+      "render": "c_string",
+      "description": "Build-time output prefix"
+    }
+  },
+  "runtime_arguments": [
+    {
+      "name": "label",
+      "type": "str",
+      "required": false,
+      "description": "Optional runtime label"
+    }
+  ],
+  "sources": [
+    {
+      "template": "templates/main.cpp.tmpl",
+      "output": "main.cpp",
+      "compile": true
+    },
+    {
+      "template": "templates/runtime_helper.cpp.tmpl",
+      "output": "runtime_helper.cpp",
+      "compile": true
+    },
+    {
+      "template": "templates/runtime_helper.h.tmpl",
+      "output": "runtime_helper.h",
+      "compile": false
+    }
+  ],
+  "output_name": "win32-runtime-helper.exe"
+}

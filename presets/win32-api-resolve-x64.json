@@ -1,0 +1,7 @@
+{
+  "id": "win32-api-resolve-x64",
+  "name": "win32-api-resolve x64",
+  "method": "win32-api-resolve",
+  "architecture": "x64",
+  "build_type": "release"
+}

@@ -1,0 +1,7 @@
+{
+  "id": "win32-dll-load-info-x86",
+  "name": "win32-dll-load-info x86",
+  "method": "win32-dll-load-info",
+  "architecture": "x86",
+  "build_type": "release"
+}

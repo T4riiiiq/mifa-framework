@@ -1,0 +1,10 @@
+{
+  "id": "win32-file-map-x64",
+  "name": "win32-file-map x64",
+  "method": "win32-file-map",
+  "architecture": "x64",
+  "build_type": "release",
+  "parameters": {
+    "preview_bytes": 64
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "id": "win32-dll-load-info-x64",
+  "name": "win32-dll-load-info x64",
+  "method": "win32-dll-load-info",
+  "architecture": "x64",
+  "build_type": "release"
+}

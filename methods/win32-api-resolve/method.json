@@ -1,0 +1,39 @@
+{
+  "id": "win32-api-resolve",
+  "name": "Win32 API Resolution",
+  "language": "cpp",
+  "description": "Resolve an exported symbol from a Windows module and report its address without invoking it.",
+  "architectures": [
+    "x64",
+    "x86"
+  ],
+  "requires_payload": false,
+  "payload_types": [],
+  "build_types": [
+    "release",
+    "debug"
+  ],
+  "parameters": {},
+  "runtime_arguments": [
+    {
+      "name": "module",
+      "type": "str",
+      "required": true,
+      "description": "Module name or DLL path"
+    },
+    {
+      "name": "symbol",
+      "type": "str",
+      "required": true,
+      "description": "Exported symbol name"
+    }
+  ],
+  "sources": [
+    {
+      "template": "templates/main.cpp.tmpl",
+      "output": "main.cpp",
+      "compile": true
+    }
+  ],
+  "output_name": "win32-api-resolve.exe"
+}
