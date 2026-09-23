@@ -1,0 +1,75 @@
+#include "pe_info.hpp"
+
+#include <windows.h>
+
+#include <iostream>
+#include <string>
+
+
+int main(
+    int argc,
+    char* argv[]
+)
+{
+    std::string file_path;
+
+
+    if (argc >= 2)
+    {
+        file_path =
+            argv[1];
+    }
+    else
+    {
+        char self_path[MAX_PATH] = {};
+
+        DWORD length =
+            GetModuleFileNameA(
+                nullptr,
+                self_path,
+                MAX_PATH
+            );
+
+
+        if (length == 0)
+        {
+            std::cerr
+                << "[!] Unable to determine "
+                << "current executable path"
+                << std::endl;
+
+            return 1;
+        }
+
+
+        file_path =
+            self_path;
+    }
+
+
+    PeInfo info{};
+    std::string error;
+
+
+    if (!parse_pe_file(
+        file_path,
+        info,
+        error
+    ))
+    {
+        std::cerr
+            << "[!] PE parsing failed: "
+            << error
+            << std::endl;
+
+        return 1;
+    }
+
+
+    print_pe_info(
+        info
+    );
+
+
+    return 0;
+}

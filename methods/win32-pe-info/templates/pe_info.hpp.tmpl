@@ -1,0 +1,57 @@
+#ifndef PE_INFO_HPP
+#define PE_INFO_HPP
+
+#include <windows.h>
+
+#include <cstdint>
+#include <string>
+#include <vector>
+
+
+struct SectionInfo
+{
+    std::string name;
+
+    DWORD virtual_address;
+    DWORD virtual_size;
+
+    DWORD raw_address;
+    DWORD raw_size;
+
+    DWORD characteristics;
+};
+
+
+struct PeInfo
+{
+    std::string file_path;
+    std::string pe_type;
+    std::string machine_name;
+    std::string subsystem_name;
+
+    WORD machine;
+    WORD number_of_sections;
+    WORD subsystem;
+
+    DWORD entry_point_rva;
+    DWORD size_of_image;
+    DWORD size_of_headers;
+
+    std::uint64_t image_base;
+
+    std::vector<SectionInfo> sections;
+};
+
+
+bool parse_pe_file(
+    const std::string& file_path,
+    PeInfo& info,
+    std::string& error
+);
+
+
+void print_pe_info(
+    const PeInfo& info
+);
+
+#endif

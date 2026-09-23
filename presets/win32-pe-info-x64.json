@@ -1,0 +1,7 @@
+{
+  "id": "win32-pe-info-x64",
+  "name": "Win32 PE Information x64",
+  "method": "win32-pe-info",
+  "architecture": "x64",
+  "build_type": "release"
+}

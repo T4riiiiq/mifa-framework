@@ -1,0 +1,28 @@
+{
+  "id": "win32-pe-info",
+  "name": "Win32 PE Information",
+  "language": "cpp",
+  "description": "Parses PE headers and section metadata from a Windows Portable Executable file.",
+  "architectures": ["x64", "x86"],
+  "requires_payload": false,
+  "payload_types": [],
+  "requires_target": false,
+  "sources": [
+    {
+      "template": "templates/main.cpp.tmpl",
+      "output": "main.cpp",
+      "compile": true
+    },
+    {
+      "template": "templates/pe_info.cpp.tmpl",
+      "output": "pe_info.cpp",
+      "compile": true
+    },
+    {
+      "template": "templates/pe_info.hpp.tmpl",
+      "output": "pe_info.hpp",
+      "compile": false
+    }
+  ],
+  "output_name": "win32-pe-info.exe"
+}
