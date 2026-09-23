@@ -1,0 +1,7 @@
+{
+  "id": "win32-pe-rva-x64",
+  "name": "Win32 PE RVA Translator x64",
+  "method": "win32-pe-rva",
+  "architecture": "x64",
+  "build_type": "release"
+}

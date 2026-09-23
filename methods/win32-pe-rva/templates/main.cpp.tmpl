@@ -1,0 +1,117 @@
+#include "pe_rva.hpp"
+
+#include <cstdlib>
+#include <iostream>
+#include <limits>
+#include <string>
+
+
+int main(
+    int argc,
+    char* argv[]
+)
+{
+    if (argc != 3)
+    {
+        std::cout
+            << "Usage:"
+            << std::endl
+            << "  win32-pe-rva.exe "
+            << "<PE file> <RVA>"
+            << std::endl
+            << std::endl
+            << "Example:"
+            << std::endl
+            << "  win32-pe-rva.exe "
+            << "C:\\Windows\\System32\\notepad.exe "
+            << "0x23BD0"
+            << std::endl;
+
+        return 1;
+    }
+
+
+    std::string file_path =
+        argv[1];
+
+
+    char* end = nullptr;
+
+    unsigned long long parsed_rva =
+        std::strtoull(
+            argv[2],
+            &end,
+            0
+        );
+
+
+    if (
+        end == argv[2]
+        ||
+        *end != '\0'
+        ||
+        parsed_rva
+            > std::numeric_limits<DWORD>::max()
+    )
+    {
+        std::cerr
+            << "[!] Invalid RVA: "
+            << argv[2]
+            << std::endl;
+
+        return 1;
+    }
+
+
+    DWORD rva =
+        static_cast<DWORD>(
+            parsed_rva
+        );
+
+
+    PeLayout layout{};
+    std::string error;
+
+
+    if (!load_pe_layout(
+        file_path,
+        layout,
+        error
+    ))
+    {
+        std::cerr
+            << "[!] Unable to parse PE: "
+            << error
+            << std::endl;
+
+        return 1;
+    }
+
+
+    RvaTranslation result{};
+
+
+    if (!translate_rva(
+        layout,
+        rva,
+        result,
+        error
+    ))
+    {
+        std::cerr
+            << "[!] Translation failed: "
+            << error
+            << std::endl;
+
+        return 1;
+    }
+
+
+    print_translation(
+        file_path,
+        result
+    );
+
+
+    return 0;
+}

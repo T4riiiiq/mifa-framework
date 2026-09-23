@@ -1,0 +1,28 @@
+{
+  "id": "win32-pe-rva",
+  "name": "Win32 PE RVA Translator",
+  "language": "cpp",
+  "description": "Translates PE RVAs into preferred virtual addresses and file offsets using PE section metadata.",
+  "architectures": ["x64", "x86"],
+  "requires_payload": false,
+  "payload_types": [],
+  "requires_target": false,
+  "sources": [
+    {
+      "template": "templates/main.cpp.tmpl",
+      "output": "main.cpp",
+      "compile": true
+    },
+    {
+      "template": "templates/pe_rva.cpp.tmpl",
+      "output": "pe_rva.cpp",
+      "compile": true
+    },
+    {
+      "template": "templates/pe_rva.hpp.tmpl",
+      "output": "pe_rva.hpp",
+      "compile": false
+    }
+  ],
+  "output_name": "win32-pe-rva.exe"
+}

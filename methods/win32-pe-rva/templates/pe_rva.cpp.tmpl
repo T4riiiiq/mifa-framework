@@ -1,0 +1,594 @@
+#include "pe_rva.hpp"
+
+#include <algorithm>
+#include <cstring>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <vector>
+
+
+namespace
+{
+    bool range_valid(
+        std::size_t offset,
+        std::size_t length,
+        std::size_t total
+    )
+    {
+        if (offset > total)
+        {
+            return false;
+        }
+
+        return length <= (
+            total - offset
+        );
+    }
+
+
+    std::string get_section_name(
+        const BYTE name[IMAGE_SIZEOF_SHORT_NAME]
+    )
+    {
+        char buffer[
+            IMAGE_SIZEOF_SHORT_NAME + 1
+        ] = {};
+
+        std::memcpy(
+            buffer,
+            name,
+            IMAGE_SIZEOF_SHORT_NAME
+        );
+
+        return std::string(
+            buffer
+        );
+    }
+}
+
+
+bool load_pe_layout(
+    const std::string& file_path,
+    PeLayout& layout,
+    std::string& error
+)
+{
+    std::ifstream file(
+        file_path,
+        std::ios::binary
+    );
+
+
+    if (!file)
+    {
+        error =
+            "Unable to open file";
+
+        return false;
+    }
+
+
+    file.seekg(
+        0,
+        std::ios::end
+    );
+
+    std::streamoff file_size =
+        file.tellg();
+
+
+    if (file_size <= 0)
+    {
+        error =
+            "File is empty";
+
+        return false;
+    }
+
+
+    file.seekg(
+        0,
+        std::ios::beg
+    );
+
+
+    std::vector<unsigned char> data(
+        static_cast<std::size_t>(
+            file_size
+        )
+    );
+
+
+    if (!file.read(
+        reinterpret_cast<char*>(
+            data.data()
+        ),
+        file_size
+    ))
+    {
+        error =
+            "Unable to read file";
+
+        return false;
+    }
+
+
+    if (!range_valid(
+        0,
+        sizeof(IMAGE_DOS_HEADER),
+        data.size()
+    ))
+    {
+        error =
+            "Missing DOS header";
+
+        return false;
+    }
+
+
+    IMAGE_DOS_HEADER dos{};
+
+    std::memcpy(
+        &dos,
+        data.data(),
+        sizeof(dos)
+    );
+
+
+    if (
+        dos.e_magic
+        != IMAGE_DOS_SIGNATURE
+    )
+    {
+        error =
+            "Invalid DOS signature";
+
+        return false;
+    }
+
+
+    if (dos.e_lfanew <= 0)
+    {
+        error =
+            "Invalid e_lfanew";
+
+        return false;
+    }
+
+
+    std::size_t nt_offset =
+        static_cast<std::size_t>(
+            dos.e_lfanew
+        );
+
+
+    if (!range_valid(
+        nt_offset,
+        sizeof(DWORD)
+            + sizeof(IMAGE_FILE_HEADER),
+        data.size()
+    ))
+    {
+        error =
+            "Invalid NT header offset";
+
+        return false;
+    }
+
+
+    DWORD signature = 0;
+
+    std::memcpy(
+        &signature,
+        data.data() + nt_offset,
+        sizeof(signature)
+    );
+
+
+    if (
+        signature
+        != IMAGE_NT_SIGNATURE
+    )
+    {
+        error =
+            "Invalid PE signature";
+
+        return false;
+    }
+
+
+    IMAGE_FILE_HEADER file_header{};
+
+    std::size_t file_header_offset =
+        nt_offset
+        + sizeof(DWORD);
+
+
+    std::memcpy(
+        &file_header,
+        data.data()
+            + file_header_offset,
+        sizeof(file_header)
+    );
+
+
+    std::size_t optional_offset =
+        file_header_offset
+        + sizeof(IMAGE_FILE_HEADER);
+
+
+    if (!range_valid(
+        optional_offset,
+        file_header.SizeOfOptionalHeader,
+        data.size()
+    ))
+    {
+        error =
+            "Optional header is truncated";
+
+        return false;
+    }
+
+
+    WORD magic = 0;
+
+    std::memcpy(
+        &magic,
+        data.data()
+            + optional_offset,
+        sizeof(magic)
+    );
+
+
+    layout = {};
+
+
+    if (
+        magic
+        == IMAGE_NT_OPTIONAL_HDR64_MAGIC
+    )
+    {
+        if (
+            file_header.SizeOfOptionalHeader
+            < sizeof(
+                IMAGE_OPTIONAL_HEADER64
+            )
+        )
+        {
+            error =
+                "Invalid PE32+ optional header";
+
+            return false;
+        }
+
+
+        IMAGE_OPTIONAL_HEADER64 optional{};
+
+        std::memcpy(
+            &optional,
+            data.data()
+                + optional_offset,
+            sizeof(optional)
+        );
+
+
+        layout.image_base =
+            optional.ImageBase;
+
+        layout.size_of_headers =
+            optional.SizeOfHeaders;
+    }
+    else if (
+        magic
+        == IMAGE_NT_OPTIONAL_HDR32_MAGIC
+    )
+    {
+        if (
+            file_header.SizeOfOptionalHeader
+            < sizeof(
+                IMAGE_OPTIONAL_HEADER32
+            )
+        )
+        {
+            error =
+                "Invalid PE32 optional header";
+
+            return false;
+        }
+
+
+        IMAGE_OPTIONAL_HEADER32 optional{};
+
+        std::memcpy(
+            &optional,
+            data.data()
+                + optional_offset,
+            sizeof(optional)
+        );
+
+
+        layout.image_base =
+            optional.ImageBase;
+
+        layout.size_of_headers =
+            optional.SizeOfHeaders;
+    }
+    else
+    {
+        error =
+            "Unsupported optional header";
+
+        return false;
+    }
+
+
+    std::size_t section_table =
+        optional_offset
+        + file_header.SizeOfOptionalHeader;
+
+
+    std::size_t section_bytes =
+        static_cast<std::size_t>(
+            file_header.NumberOfSections
+        )
+        * sizeof(
+            IMAGE_SECTION_HEADER
+        );
+
+
+    if (!range_valid(
+        section_table,
+        section_bytes,
+        data.size()
+    ))
+    {
+        error =
+            "Section table is truncated";
+
+        return false;
+    }
+
+
+    for (
+        WORD index = 0;
+        index < file_header.NumberOfSections;
+        ++index
+    )
+    {
+        IMAGE_SECTION_HEADER section{};
+
+        std::size_t offset =
+            section_table
+            + (
+                static_cast<std::size_t>(
+                    index
+                )
+                * sizeof(
+                    IMAGE_SECTION_HEADER
+                )
+            );
+
+
+        std::memcpy(
+            &section,
+            data.data() + offset,
+            sizeof(section)
+        );
+
+
+        PeSection item{};
+
+        item.name =
+            get_section_name(
+                section.Name
+            );
+
+        item.virtual_address =
+            section.VirtualAddress;
+
+        item.virtual_size =
+            section.Misc.VirtualSize;
+
+        item.raw_address =
+            section.PointerToRawData;
+
+        item.raw_size =
+            section.SizeOfRawData;
+
+
+        layout.sections.push_back(
+            item
+        );
+    }
+
+
+    return true;
+}
+
+
+bool translate_rva(
+    const PeLayout& layout,
+    DWORD rva,
+    RvaTranslation& result,
+    std::string& error
+)
+{
+    result = {};
+
+    result.rva =
+        rva;
+
+    result.preferred_va =
+        layout.image_base
+        + static_cast<std::uint64_t>(
+            rva
+        );
+
+
+    if (
+        rva
+        < layout.size_of_headers
+    )
+    {
+        result.section_name =
+            "<headers>";
+
+        result.section_offset =
+            rva;
+
+        result.has_raw_offset =
+            true;
+
+        result.raw_offset =
+            rva;
+
+        return true;
+    }
+
+
+    for (
+        const PeSection& section :
+        layout.sections
+    )
+    {
+        DWORD mapped_size =
+            std::max(
+                section.virtual_size,
+                section.raw_size
+            );
+
+
+        std::uint64_t section_start =
+            section.virtual_address;
+
+        std::uint64_t section_end =
+            section_start
+            + mapped_size;
+
+
+        if (
+            rva >= section_start
+            &&
+            static_cast<std::uint64_t>(
+                rva
+            ) < section_end
+        )
+        {
+            DWORD delta =
+                rva
+                - section.virtual_address;
+
+
+            result.section_name =
+                section.name;
+
+            result.section_offset =
+                delta;
+
+
+            if (
+                delta
+                < section.raw_size
+            )
+            {
+                result.has_raw_offset =
+                    true;
+
+                result.raw_offset =
+                    section.raw_address
+                    + delta;
+            }
+            else
+            {
+                result.has_raw_offset =
+                    false;
+            }
+
+
+            return true;
+        }
+    }
+
+
+    error =
+        "RVA does not belong to a mapped PE section";
+
+    return false;
+}
+
+
+void print_translation(
+    const std::string& file_path,
+    const RvaTranslation& result
+)
+{
+    std::cout
+        << "Mifa PE RVA Translator"
+        << std::endl;
+
+    std::cout
+        << "Build: {{BUILD_ID}}"
+        << std::endl;
+
+    std::cout
+        << "Architecture: {{ARCH}}"
+        << std::endl;
+
+    std::cout
+        << std::endl;
+
+
+    std::cout
+        << "File: "
+        << file_path
+        << std::endl;
+
+
+    std::cout
+        << "RVA: 0x"
+        << std::hex
+        << std::uppercase
+        << result.rva
+        << std::endl;
+
+
+    std::cout
+        << "Preferred VA: 0x"
+        << result.preferred_va
+        << std::endl;
+
+
+    std::cout
+        << "Section: "
+        << result.section_name
+        << std::endl;
+
+
+    std::cout
+        << "Offset in section: 0x"
+        << result.section_offset
+        << std::endl;
+
+
+    if (
+        result.has_raw_offset
+    )
+    {
+        std::cout
+            << "Raw file offset: 0x"
+            << result.raw_offset
+            << std::endl;
+    }
+    else
+    {
+        std::cout
+            << "Raw file offset: "
+            << "<no raw backing>"
+            << std::endl;
+    }
+
+
+    std::cout
+        << std::dec;
+}

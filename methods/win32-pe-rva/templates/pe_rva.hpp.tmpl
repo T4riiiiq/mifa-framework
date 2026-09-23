@@ -1,0 +1,67 @@
+#ifndef PE_RVA_HPP
+#define PE_RVA_HPP
+
+#include <windows.h>
+
+#include <cstdint>
+#include <string>
+#include <vector>
+
+
+struct PeSection
+{
+    std::string name;
+
+    DWORD virtual_address;
+    DWORD virtual_size;
+
+    DWORD raw_address;
+    DWORD raw_size;
+};
+
+
+struct PeLayout
+{
+    std::uint64_t image_base;
+    DWORD size_of_headers;
+
+    std::vector<PeSection> sections;
+};
+
+
+struct RvaTranslation
+{
+    DWORD rva;
+
+    std::uint64_t preferred_va;
+
+    std::string section_name;
+
+    bool has_raw_offset;
+    DWORD raw_offset;
+
+    DWORD section_offset;
+};
+
+
+bool load_pe_layout(
+    const std::string& file_path,
+    PeLayout& layout,
+    std::string& error
+);
+
+
+bool translate_rva(
+    const PeLayout& layout,
+    DWORD rva,
+    RvaTranslation& result,
+    std::string& error
+);
+
+
+void print_translation(
+    const std::string& file_path,
+    const RvaTranslation& result
+);
+
+#endif
