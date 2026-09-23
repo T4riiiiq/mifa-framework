@@ -5,5 +5,8 @@
   "description": "Harmless test method used to validate Mifa's method system.",
   "architectures": ["x64", "x86"],
   "payload_types": [],
-  "requires_target": false
+  "requires_target": false,
+  "template": "templates/main.c.tmpl",
+  "source_name": "main.c",
+  "output_name": "hello.exe"
 }
