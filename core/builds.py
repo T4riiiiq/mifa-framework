@@ -119,7 +119,8 @@ class BuildManager:
     def create(
         self,
         method,
-        preset
+        preset,
+        parameters=None
     ):
         build_id = (
             self._next_build_id()
@@ -194,6 +195,15 @@ class BuildManager:
                         "build_type"
                     )
             },
+
+            "parameters":
+                parameters or {},
+
+            "runtime_arguments":
+                method.get(
+                    "runtime_arguments",
+                    []
+                ),
 
             "payload":
                 None

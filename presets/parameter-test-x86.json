@@ -1,0 +1,10 @@
+{
+  "id": "parameter-test-x86",
+  "name": "Parameter Rendering Regression x86",
+  "method": "parameter-test",
+  "architecture": "x86",
+  "build_type": "release",
+  "parameters": {
+    "repeat": 1
+  }
+}

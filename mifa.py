@@ -11,6 +11,7 @@ from core.compiler import Compiler
 from core.payloads import PayloadManager
 from core.compatibility import CompatibilityChecker
 from core.schema import MethodSchemaValidator
+from core.parameters import ParameterResolver
 
 
 ROOT = Path(__file__).resolve().parent
@@ -47,17 +48,17 @@ def list_methods(
         return
 
     print(
-        f"{'ID':<20} "
-        f"{'NAME':<30} "
+        f"{'ID':<28} "
+        f"{'NAME':<34} "
         f"{'LANGUAGE':<12}"
     )
 
-    print("-" * 64)
+    print("-" * 78)
 
     for method in methods:
         print(
-            f"{method.get('id', 'unknown'):<20} "
-            f"{method.get('name', 'Unnamed'):<30} "
+            f"{method.get('id', 'unknown'):<28} "
+            f"{method.get('name', 'Unnamed'):<34} "
             f"{method.get('language', '-'):<12}"
         )
 
@@ -123,6 +124,21 @@ def show_method(
         )
     )
 
+    build_types = method.get(
+        "build_types",
+        [
+            "release",
+            "debug"
+        ]
+    )
+
+    print(
+        "Build types     : "
+        + ", ".join(
+            build_types
+        )
+    )
+
     sources = method.get(
         "sources",
         []
@@ -148,6 +164,73 @@ def show_method(
             f"({marker})"
         )
 
+    parameters = method.get(
+        "parameters",
+        {}
+    )
+
+    print(
+        f"Parameters      : "
+        f"{len(parameters)}"
+    )
+
+    for name, spec in parameters.items():
+        required = (
+            "required"
+            if spec.get(
+                "required",
+                False
+            )
+            else "optional"
+        )
+
+        parameter_type = spec.get(
+            "type",
+            "str"
+        )
+
+        default = (
+            spec.get(
+                "default",
+                "<none>"
+            )
+        )
+
+        print(
+            f"                  "
+            f"{name} "
+            f"({parameter_type}, "
+            f"{required}, "
+            f"default={default})"
+        )
+
+    runtime_arguments = method.get(
+        "runtime_arguments",
+        []
+    )
+
+    print(
+        f"Runtime args    : "
+        f"{len(runtime_arguments)}"
+    )
+
+    for argument in runtime_arguments:
+        required = (
+            "required"
+            if argument.get(
+                "required",
+                True
+            )
+            else "optional"
+        )
+
+        print(
+            f"                  "
+            f"{argument.get('name', '-')} "
+            f"({argument.get('type', 'str')}, "
+            f"{required})"
+        )
+
     print(
         f"Output name     : "
         f"{method.get('output_name', 'output.exe')}"
@@ -171,18 +254,18 @@ def list_presets(
         return
 
     print(
-        f"{'ID':<20} "
-        f"{'METHOD':<20} "
+        f"{'ID':<32} "
+        f"{'METHOD':<28} "
         f"{'ARCH':<10} "
         f"{'BUILD':<10}"
     )
 
-    print("-" * 64)
+    print("-" * 84)
 
     for preset in presets:
         print(
-            f"{preset.get('id', 'unknown'):<20} "
-            f"{preset.get('method', '-'):<20} "
+            f"{preset.get('id', 'unknown'):<32} "
+            f"{preset.get('method', '-'):<28} "
             f"{preset.get('architecture', '-'):<10} "
             f"{preset.get('build_type', '-'):<10}"
         )
@@ -341,13 +424,15 @@ def run_compatibility_check(
     method,
     preset,
     payload_path=None,
-    payload_type=None
+    payload_type=None,
+    parameter_errors=None
 ):
     errors = checker.validate(
         method=method,
         preset=preset,
         payload_path=payload_path,
-        payload_type=payload_type
+        payload_type=payload_type,
+        parameter_errors=parameter_errors
     )
 
     if errors:
@@ -369,6 +454,8 @@ def validate_preset(
     catalog,
     store,
     schema,
+    compatibility,
+    parameter_resolver,
     preset_id
 ):
     try:
@@ -387,26 +474,29 @@ def validate_preset(
         )
         return False
 
-    architecture = preset.get(
-        "architecture"
+    resolved_parameters, parameter_errors = (
+        parameter_resolver.resolve(
+            method=method,
+            preset=preset,
+            cli_items=[]
+        )
     )
 
-    supported = method.get(
-        "architectures",
-        []
+    errors = compatibility.validate_preset(
+        method=method,
+        preset=preset,
+        parameter_errors=parameter_errors
     )
 
-    if architecture not in supported:
+    if errors:
         print(
             "[!] Preset validation failed"
         )
 
-        print(
-            f"    - Architecture "
-            f"'{architecture}' is not "
-            f"supported by method "
-            f"'{method.get('id')}'"
-        )
+        for error in errors:
+            print(
+                f"    - {error}"
+            )
 
         return False
 
@@ -426,7 +516,7 @@ def validate_preset(
 
     print(
         f"    Architecture : "
-        f"{architecture}"
+        f"{preset.get('architecture')}"
     )
 
     print(
@@ -437,6 +527,11 @@ def validate_preset(
     print(
         f"    Payload req. : "
         f"{method.get('requires_payload', False)}"
+    )
+
+    print(
+        f"    Parameters   : "
+        f"{len(resolved_parameters)}"
     )
 
     print(
@@ -456,9 +551,11 @@ def create_build(
     compiler,
     payload_manager,
     compatibility,
+    parameter_resolver,
     preset_id,
     payload_path=None,
-    payload_type=None
+    payload_type=None,
+    parameter_items=None
 ):
     build_dir = None
 
@@ -472,13 +569,23 @@ def create_build(
             )
         )
 
+        (
+            resolved_parameters,
+            parameter_errors
+        ) = parameter_resolver.resolve(
+            method=method,
+            preset=preset,
+            cli_items=parameter_items
+        )
+
         compatible = (
             run_compatibility_check(
                 checker=compatibility,
                 method=method,
                 preset=preset,
                 payload_path=payload_path,
-                payload_type=payload_type
+                payload_type=payload_type,
+                parameter_errors=parameter_errors
             )
         )
 
@@ -493,10 +600,24 @@ def create_build(
             "[+] Compatibility validation passed"
         )
 
+        if resolved_parameters:
+            print(
+                f"[+] Parameters resolved: "
+                f"{len(resolved_parameters)}"
+            )
+
+            for name, value in (
+                resolved_parameters.items()
+            ):
+                print(
+                    f"    - {name}={value}"
+                )
+
         build_id, build_dir = (
             manager.create(
                 method=method,
-                preset=preset
+                preset=preset,
+                parameters=resolved_parameters
             )
         )
 
@@ -545,7 +666,8 @@ def create_build(
                 build_id=build_id,
                 build_dir=build_dir,
                 payload_info=payload_info,
-                payload_type=payload_type
+                payload_type=payload_type,
+                parameters=resolved_parameters
             )
         )
 
@@ -616,6 +738,12 @@ def create_build(
             f"    Build type   : "
             f"{preset.get('build_type', '-')}"
         )
+
+        if resolved_parameters:
+            print(
+                f"    Parameters   : "
+                f"{len(resolved_parameters)}"
+            )
 
         if payload_info is not None:
             print(
@@ -764,6 +892,18 @@ def build_parser():
         help="Payload type"
     )
 
+    build_command.add_argument(
+        "--set",
+        dest="parameters",
+        action="append",
+        default=[],
+        metavar="KEY=VALUE",
+        help=(
+            "Override a declared method "
+            "parameter. May be repeated."
+        )
+    )
+
     return parser
 
 
@@ -801,6 +941,10 @@ def main():
         MethodSchemaValidator()
     )
 
+    parameter_resolver = (
+        ParameterResolver()
+    )
+
     show_banner()
 
     if args.command == "methods":
@@ -830,6 +974,8 @@ def main():
             catalog,
             presets,
             schema,
+            compatibility,
+            parameter_resolver,
             args.preset
         )
 
@@ -843,9 +989,11 @@ def main():
             compiler=compiler,
             payload_manager=payload_manager,
             compatibility=compatibility,
+            parameter_resolver=parameter_resolver,
             preset_id=args.preset,
             payload_path=args.payload,
-            payload_type=args.payload_type
+            payload_type=args.payload_type,
+            parameter_items=args.parameters
         )
 
     else:

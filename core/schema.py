@@ -1,3 +1,6 @@
+import re
+
+
 class MethodSchemaValidator:
     REQUIRED_FIELDS = [
         "id",
@@ -20,6 +23,365 @@ class MethodSchemaValidator:
         "cpp"
     }
 
+    SUPPORTED_BUILD_TYPES = {
+        "release",
+        "debug"
+    }
+
+    SUPPORTED_PARAMETER_TYPES = {
+        "str",
+        "int",
+        "float",
+        "bool"
+    }
+
+    SUPPORTED_PARAMETER_RENDERERS = {
+        "raw",
+        "c_string"
+    }
+
+    SUPPORTED_RUNTIME_ARGUMENT_TYPES = {
+        "str",
+        "int",
+        "float",
+        "bool",
+        "hex",
+        "path"
+    }
+
+    PARAMETER_NAME = re.compile(
+        r"^[A-Za-z_][A-Za-z0-9_]*$"
+    )
+
+    def _validate_parameters(
+        self,
+        method,
+        errors
+    ):
+        parameters = method.get(
+            "parameters",
+            {}
+        )
+
+        if not isinstance(
+            parameters,
+            dict
+        ):
+            errors.append(
+                "parameters must be an object"
+            )
+            return
+
+        for name, spec in parameters.items():
+            prefix = (
+                f"parameters.{name}"
+            )
+
+            if (
+                not isinstance(
+                    name,
+                    str
+                )
+                or not self.PARAMETER_NAME.match(
+                    name
+                )
+            ):
+                errors.append(
+                    f"Invalid parameter name: "
+                    f"{name}"
+                )
+                continue
+
+            if not isinstance(
+                spec,
+                dict
+            ):
+                errors.append(
+                    f"{prefix} must be an object"
+                )
+                continue
+
+            parameter_type = spec.get(
+                "type",
+                "str"
+            )
+
+            if (
+                parameter_type
+                not in self.SUPPORTED_PARAMETER_TYPES
+            ):
+                errors.append(
+                    f"{prefix}.type is unsupported: "
+                    f"{parameter_type}"
+                )
+
+            required = spec.get(
+                "required",
+                False
+            )
+
+            if not isinstance(
+                required,
+                bool
+            ):
+                errors.append(
+                    f"{prefix}.required must be "
+                    "true or false"
+                )
+
+            render = spec.get(
+                "render",
+                "raw"
+            )
+
+            if (
+                render
+                not in self.SUPPORTED_PARAMETER_RENDERERS
+            ):
+                errors.append(
+                    f"{prefix}.render is unsupported: "
+                    f"{render}"
+                )
+
+            description = spec.get(
+                "description"
+            )
+
+            if (
+                description is not None
+                and not isinstance(
+                    description,
+                    str
+                )
+            ):
+                errors.append(
+                    f"{prefix}.description must "
+                    "be a string"
+                )
+
+            choices = spec.get(
+                "choices"
+            )
+
+            if (
+                choices is not None
+                and (
+                    not isinstance(
+                        choices,
+                        list
+                    )
+                    or not choices
+                )
+            ):
+                errors.append(
+                    f"{prefix}.choices must be "
+                    "a non-empty list"
+                )
+
+            minimum = spec.get(
+                "min"
+            )
+
+            maximum = spec.get(
+                "max"
+            )
+
+            if (
+                minimum is not None
+                and not isinstance(
+                    minimum,
+                    (
+                        int,
+                        float
+                    )
+                )
+            ):
+                errors.append(
+                    f"{prefix}.min must be numeric"
+                )
+
+            if (
+                maximum is not None
+                and not isinstance(
+                    maximum,
+                    (
+                        int,
+                        float
+                    )
+                )
+            ):
+                errors.append(
+                    f"{prefix}.max must be numeric"
+                )
+
+            if (
+                isinstance(
+                    minimum,
+                    (
+                        int,
+                        float
+                    )
+                )
+                and isinstance(
+                    maximum,
+                    (
+                        int,
+                        float
+                    )
+                )
+                and minimum > maximum
+            ):
+                errors.append(
+                    f"{prefix}.min cannot be "
+                    "greater than max"
+                )
+
+    def _validate_runtime_arguments(
+        self,
+        method,
+        errors
+    ):
+        runtime_arguments = method.get(
+            "runtime_arguments",
+            []
+        )
+
+        if not isinstance(
+            runtime_arguments,
+            list
+        ):
+            errors.append(
+                "runtime_arguments must be a list"
+            )
+            return
+
+        names = set()
+
+        for index, argument in enumerate(
+            runtime_arguments
+        ):
+            prefix = (
+                f"runtime_arguments[{index}]"
+            )
+
+            if not isinstance(
+                argument,
+                dict
+            ):
+                errors.append(
+                    f"{prefix} must be an object"
+                )
+                continue
+
+            name = argument.get(
+                "name"
+            )
+
+            if (
+                not isinstance(
+                    name,
+                    str
+                )
+                or not name.strip()
+            ):
+                errors.append(
+                    f"{prefix}.name must be a "
+                    "non-empty string"
+                )
+
+            elif name in names:
+                errors.append(
+                    f"Duplicate runtime argument: "
+                    f"{name}"
+                )
+
+            else:
+                names.add(
+                    name
+                )
+
+            argument_type = argument.get(
+                "type",
+                "str"
+            )
+
+            if (
+                argument_type
+                not in self.SUPPORTED_RUNTIME_ARGUMENT_TYPES
+            ):
+                errors.append(
+                    f"{prefix}.type is unsupported: "
+                    f"{argument_type}"
+                )
+
+            required = argument.get(
+                "required",
+                True
+            )
+
+            if not isinstance(
+                required,
+                bool
+            ):
+                errors.append(
+                    f"{prefix}.required must be "
+                    "true or false"
+                )
+
+            description = argument.get(
+                "description"
+            )
+
+            if (
+                description is not None
+                and not isinstance(
+                    description,
+                    str
+                )
+            ):
+                errors.append(
+                    f"{prefix}.description must "
+                    "be a string"
+                )
+
+    def _validate_build_types(
+        self,
+        method,
+        errors
+    ):
+        build_types = method.get(
+            "build_types"
+        )
+
+        if build_types is None:
+            return
+
+        if not isinstance(
+            build_types,
+            list
+        ):
+            errors.append(
+                "build_types must be a list"
+            )
+            return
+
+        if not build_types:
+            errors.append(
+                "build_types must contain at "
+                "least one build type"
+            )
+            return
+
+        for build_type in build_types:
+            if (
+                build_type
+                not in self.SUPPORTED_BUILD_TYPES
+            ):
+                errors.append(
+                    f"Unsupported build type: "
+                    f"{build_type}"
+                )
+
     def validate(self, method):
         errors = []
 
@@ -32,31 +394,47 @@ class MethodSchemaValidator:
         if errors:
             return errors
 
-        method_id = method.get("id")
+        method_id = method.get(
+            "id"
+        )
 
         if (
-            not isinstance(method_id, str)
+            not isinstance(
+                method_id,
+                str
+            )
             or not method_id.strip()
         ):
             errors.append(
                 "id must be a non-empty string"
             )
 
-        name = method.get("name")
+        name = method.get(
+            "name"
+        )
 
         if (
-            not isinstance(name, str)
+            not isinstance(
+                name,
+                str
+            )
             or not name.strip()
         ):
             errors.append(
                 "name must be a non-empty string"
             )
 
-        language = method.get("language")
+        language = method.get(
+            "language"
+        )
 
-        if language not in self.SUPPORTED_LANGUAGES:
+        if (
+            language
+            not in self.SUPPORTED_LANGUAGES
+        ):
             errors.append(
-                f"Unsupported language: {language}"
+                f"Unsupported language: "
+                f"{language}"
             )
 
         architectures = method.get(
@@ -73,7 +451,8 @@ class MethodSchemaValidator:
 
         elif not architectures:
             errors.append(
-                "architectures must contain at least one architecture"
+                "architectures must contain at "
+                "least one architecture"
             )
 
         else:
@@ -96,7 +475,8 @@ class MethodSchemaValidator:
             bool
         ):
             errors.append(
-                "requires_payload must be true or false"
+                "requires_payload must be "
+                "true or false"
             )
 
         payload_types = method.get(
@@ -144,7 +524,8 @@ class MethodSchemaValidator:
 
         elif not sources:
             errors.append(
-                "sources must contain at least one file"
+                "sources must contain at "
+                "least one file"
             )
 
         else:
@@ -163,7 +544,8 @@ class MethodSchemaValidator:
                     dict
                 ):
                     errors.append(
-                        f"{prefix} must be an object"
+                        f"{prefix} must be "
+                        "an object"
                     )
                     continue
 
@@ -244,7 +626,23 @@ class MethodSchemaValidator:
             or not output_name.strip()
         ):
             errors.append(
-                "output_name must be a non-empty string"
+                "output_name must be a "
+                "non-empty string"
             )
+
+        self._validate_parameters(
+            method,
+            errors
+        )
+
+        self._validate_runtime_arguments(
+            method,
+            errors
+        )
+
+        self._validate_build_types(
+            method,
+            errors
+        )
 
         return errors

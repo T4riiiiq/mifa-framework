@@ -1,0 +1,57 @@
+{
+  "id": "parameter-test",
+  "name": "Parameter Rendering Regression",
+  "language": "cpp",
+  "description": "Regression method for build parameters, CLI overrides, and runtime-argument metadata.",
+  "architectures": [
+    "x64",
+    "x86"
+  ],
+  "requires_payload": false,
+  "payload_types": [],
+  "build_types": [
+    "release",
+    "debug"
+  ],
+  "parameters": {
+    "message": {
+      "type": "str",
+      "required": false,
+      "default": "Mifa parameter test",
+      "render": "c_string",
+      "description": "Message embedded into generated source"
+    },
+    "repeat": {
+      "type": "int",
+      "required": false,
+      "default": 1,
+      "min": 1,
+      "max": 5,
+      "render": "raw",
+      "description": "Number of times to print the message"
+    },
+    "enabled": {
+      "type": "bool",
+      "required": false,
+      "default": true,
+      "render": "raw",
+      "description": "Enable or suppress message output"
+    }
+  },
+  "runtime_arguments": [
+    {
+      "name": "label",
+      "type": "str",
+      "required": false,
+      "description": "Optional runtime label printed before the generated message"
+    }
+  ],
+  "sources": [
+    {
+      "template": "templates/main.cpp.tmpl",
+      "output": "main.cpp",
+      "compile": true
+    }
+  ],
+  "output_name": "parameter-test.exe"
+}

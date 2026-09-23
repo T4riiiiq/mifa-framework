@@ -1,7 +1,12 @@
 from pathlib import Path
+import re
 
 
 class SourceGenerator:
+    UNRESOLVED_PARAMETER = re.compile(
+        r"\{\{PARAM_[A-Z0-9_]+\}\}"
+    )
+
     def _render(
         self,
         template,
@@ -15,7 +20,117 @@ class SourceGenerator:
                 str(value)
             )
 
+        unresolved = (
+            self.UNRESOLVED_PARAMETER.findall(
+                generated
+            )
+        )
+
+        if unresolved:
+            unique = sorted(
+                set(
+                    unresolved
+                )
+            )
+
+            raise ValueError(
+                "Unresolved parameter token(s): "
+                + ", ".join(
+                    unique
+                )
+            )
+
         return generated
+
+    def _escape_c_string(
+        self,
+        value
+    ):
+        return (
+            str(value)
+            .replace(
+                "\\",
+                "\\\\"
+            )
+            .replace(
+                "\"",
+                "\\\""
+            )
+            .replace(
+                "\n",
+                "\\n"
+            )
+            .replace(
+                "\r",
+                "\\r"
+            )
+            .replace(
+                "\t",
+                "\\t"
+            )
+        )
+
+    def _parameter_value(
+        self,
+        value,
+        spec
+    ):
+        if value is None:
+            return ""
+
+        render = spec.get(
+            "render",
+            "raw"
+        )
+
+        if render == "c_string":
+            return self._escape_c_string(
+                value
+            )
+
+        if isinstance(
+            value,
+            bool
+        ):
+            return (
+                "true"
+                if value
+                else "false"
+            )
+
+        return str(
+            value
+        )
+
+    def _parameter_tokens(
+        self,
+        method,
+        parameters
+    ):
+        values = {}
+
+        specs = method.get(
+            "parameters",
+            {}
+        )
+
+        for name, spec in specs.items():
+            token = (
+                "{{PARAM_"
+                + name.upper()
+                + "}}"
+            )
+
+            values[token] = (
+                self._parameter_value(
+                    parameters.get(
+                        name
+                    ),
+                    spec
+                )
+            )
+
+        return values
 
     def generate(
         self,
@@ -24,7 +139,8 @@ class SourceGenerator:
         build_id,
         build_dir,
         payload_info=None,
-        payload_type=None
+        payload_type=None,
+        parameters=None
     ):
         method_path = Path(
             method["_path"]
@@ -85,6 +201,13 @@ class SourceGenerator:
                     )
             })
 
+        values.update(
+            self._parameter_tokens(
+                method=method,
+                parameters=parameters or {}
+            )
+        )
+
         source_dir = (
             build_dir / "source"
         )
@@ -138,10 +261,11 @@ class SourceGenerator:
             )
 
             generated_files.append({
-                "path": output_path,
-                "compile": source[
-                    "compile"
-                ]
+                "path":
+                    output_path,
+
+                "compile":
+                    source["compile"]
             })
 
         return generated_files

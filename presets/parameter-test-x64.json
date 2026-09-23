@@ -1,0 +1,10 @@
+{
+  "id": "parameter-test-x64",
+  "name": "Parameter Rendering Regression x64",
+  "method": "parameter-test",
+  "architecture": "x64",
+  "build_type": "release",
+  "parameters": {
+    "repeat": 1
+  }
+}
