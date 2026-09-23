@@ -1,0 +1,35 @@
+#ifndef LOADED_IMAGE_HPP
+#define LOADED_IMAGE_HPP
+
+#include <windows.h>
+
+#include <cstdint>
+#include <string>
+
+
+struct LoadedModuleInfo
+{
+    DWORD process_id;
+
+    std::string module_name;
+    std::string module_path;
+
+    std::uintptr_t base_address;
+    DWORD module_size;
+};
+
+
+bool find_loaded_module(
+    DWORD process_id,
+    const std::string& module_name,
+    LoadedModuleInfo& info,
+    std::string& error
+);
+
+
+void print_loaded_address(
+    const LoadedModuleInfo& info,
+    DWORD rva
+);
+
+#endif

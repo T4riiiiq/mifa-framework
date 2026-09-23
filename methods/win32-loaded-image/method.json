@@ -1,0 +1,28 @@
+{
+  "id": "win32-loaded-image",
+  "name": "Win32 Loaded Image Address",
+  "language": "cpp",
+  "description": "Locates a module loaded in a Windows process and translates an RVA using the module's actual runtime base address.",
+  "architectures": ["x64", "x86"],
+  "requires_payload": false,
+  "payload_types": [],
+  "requires_target": false,
+  "sources": [
+    {
+      "template": "templates/main.cpp.tmpl",
+      "output": "main.cpp",
+      "compile": true
+    },
+    {
+      "template": "templates/loaded_image.cpp.tmpl",
+      "output": "loaded_image.cpp",
+      "compile": true
+    },
+    {
+      "template": "templates/loaded_image.hpp.tmpl",
+      "output": "loaded_image.hpp",
+      "compile": false
+    }
+  ],
+  "output_name": "win32-loaded-image.exe"
+}

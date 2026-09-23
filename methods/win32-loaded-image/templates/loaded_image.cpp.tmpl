@@ -1,0 +1,205 @@
+#include "loaded_image.hpp"
+
+#include <tlhelp32.h>
+
+#include <cstring>
+#include <iomanip>
+#include <iostream>
+
+
+bool find_loaded_module(
+    DWORD process_id,
+    const std::string& module_name,
+    LoadedModuleInfo& info,
+    std::string& error
+)
+{
+    HANDLE snapshot =
+        CreateToolhelp32Snapshot(
+            TH32CS_SNAPMODULE |
+            TH32CS_SNAPMODULE32,
+            process_id
+        );
+
+
+    if (snapshot == INVALID_HANDLE_VALUE)
+    {
+        error =
+            "CreateToolhelp32Snapshot failed. "
+            "GetLastError="
+            + std::to_string(
+                GetLastError()
+            );
+
+        return false;
+    }
+
+
+    MODULEENTRY32 entry{};
+
+    entry.dwSize =
+        sizeof(MODULEENTRY32);
+
+
+    if (!Module32First(
+        snapshot,
+        &entry
+    ))
+    {
+        error =
+            "Module32First failed. "
+            "GetLastError="
+            + std::to_string(
+                GetLastError()
+            );
+
+        CloseHandle(
+            snapshot
+        );
+
+        return false;
+    }
+
+
+    do
+    {
+        if (
+            _stricmp(
+                entry.szModule,
+                module_name.c_str()
+            ) == 0
+        )
+        {
+            info = {};
+
+            info.process_id =
+                process_id;
+
+            info.module_name =
+                entry.szModule;
+
+            info.module_path =
+                entry.szExePath;
+
+            info.base_address =
+                reinterpret_cast<std::uintptr_t>(
+                    entry.modBaseAddr
+                );
+
+            info.module_size =
+                entry.modBaseSize;
+
+
+            CloseHandle(
+                snapshot
+            );
+
+            return true;
+        }
+
+    }
+    while (
+        Module32Next(
+            snapshot,
+            &entry
+        )
+    );
+
+
+    CloseHandle(
+        snapshot
+    );
+
+
+    error =
+        "Module not found in target process";
+
+    return false;
+}
+
+
+void print_loaded_address(
+    const LoadedModuleInfo& info,
+    DWORD rva
+)
+{
+    std::uintptr_t actual_va =
+        info.base_address
+        + static_cast<std::uintptr_t>(
+            rva
+        );
+
+
+    std::cout
+        << "Mifa Win32 Loaded Image Address"
+        << std::endl;
+
+    std::cout
+        << "Build: {{BUILD_ID}}"
+        << std::endl;
+
+    std::cout
+        << "Architecture: {{ARCH}}"
+        << std::endl;
+
+    std::cout
+        << std::endl;
+
+
+    std::cout
+        << "PID: "
+        << info.process_id
+        << std::endl;
+
+    std::cout
+        << "Module: "
+        << info.module_name
+        << std::endl;
+
+    std::cout
+        << "Path: "
+        << info.module_path
+        << std::endl;
+
+
+    std::cout
+        << "Loaded Base: 0x"
+        << std::hex
+        << std::uppercase
+        << info.base_address
+        << std::endl;
+
+
+    std::cout
+        << "Module Size: 0x"
+        << info.module_size
+        << std::endl;
+
+
+    std::cout
+        << "RVA: 0x"
+        << rva
+        << std::endl;
+
+
+    std::cout
+        << "Actual VA: 0x"
+        << actual_va
+        << std::endl;
+
+
+    std::cout
+        << std::dec;
+
+
+    if (
+        static_cast<std::uint64_t>(rva)
+        >= info.module_size
+    )
+    {
+        std::cout
+            << "[!] Warning: RVA is outside "
+            << "the reported module image size"
+            << std::endl;
+    }
+}

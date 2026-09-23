@@ -1,0 +1,131 @@
+#include "loaded_image.hpp"
+
+#include <cstdlib>
+#include <iostream>
+#include <limits>
+#include <string>
+
+
+int main(
+    int argc,
+    char* argv[]
+)
+{
+    if (argc != 4)
+    {
+        std::cout
+            << "Usage:"
+            << std::endl
+            << "  win32-loaded-image.exe "
+            << "<PID> <module> <RVA>"
+            << std::endl
+            << std::endl
+            << "Example:"
+            << std::endl
+            << "  win32-loaded-image.exe "
+            << "3988 explorer.exe 0x1234"
+            << std::endl;
+
+        return 1;
+    }
+
+
+    char* pid_end = nullptr;
+
+    unsigned long parsed_pid =
+        std::strtoul(
+            argv[1],
+            &pid_end,
+            10
+        );
+
+
+    if (
+        pid_end == argv[1]
+        ||
+        *pid_end != '\0'
+        ||
+        parsed_pid == 0
+        ||
+        parsed_pid
+            > std::numeric_limits<DWORD>::max()
+    )
+    {
+        std::cerr
+            << "[!] Invalid PID"
+            << std::endl;
+
+        return 1;
+    }
+
+
+    std::string module_name =
+        argv[2];
+
+
+    char* rva_end = nullptr;
+
+    unsigned long long parsed_rva =
+        std::strtoull(
+            argv[3],
+            &rva_end,
+            0
+        );
+
+
+    if (
+        rva_end == argv[3]
+        ||
+        *rva_end != '\0'
+        ||
+        parsed_rva
+            > std::numeric_limits<DWORD>::max()
+    )
+    {
+        std::cerr
+            << "[!] Invalid RVA"
+            << std::endl;
+
+        return 1;
+    }
+
+
+    DWORD process_id =
+        static_cast<DWORD>(
+            parsed_pid
+        );
+
+    DWORD rva =
+        static_cast<DWORD>(
+            parsed_rva
+        );
+
+
+    LoadedModuleInfo info{};
+    std::string error;
+
+
+    if (!find_loaded_module(
+        process_id,
+        module_name,
+        info,
+        error
+    ))
+    {
+        std::cerr
+            << "[!] "
+            << error
+            << std::endl;
+
+        return 1;
+    }
+
+
+    print_loaded_address(
+        info,
+        rva
+    );
+
+
+    return 0;
+}

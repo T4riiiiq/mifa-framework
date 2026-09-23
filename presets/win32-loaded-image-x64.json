@@ -1,0 +1,7 @@
+{
+  "id": "win32-loaded-image-x64",
+  "name": "Win32 Loaded Image Address x64",
+  "method": "win32-loaded-image",
+  "architecture": "x64",
+  "build_type": "release"
+}
