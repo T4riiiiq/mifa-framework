@@ -128,7 +128,7 @@ class ReleaseQualityTests(
         self
     ):
         for relative in [
-            "tools/doctor.py",
+            "tools/verify.py",
             "tools/release_validate.py",
             "tools/prepare_smoke.py",
         ]:

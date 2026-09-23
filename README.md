@@ -120,7 +120,7 @@ K-0003
 - Build manifests
 - Compiler command provenance
 - Output SHA-256 hashing
-- Environment doctor
+- Environment verification
 - Payload-aware automated release validation
 - Curated Windows smoke bundles
 - Generated runtime smoke script and fixture data
@@ -256,7 +256,7 @@ x86 C++  : i686-w64-mingw32-g++
 Check the local environment:
 
 ```bash
-python3 tools/doctor.py --require-compilers
+python3 tools/verify.py --strict
 ```
 
 ---
@@ -354,7 +354,7 @@ Run the full automated release gate:
 python3 -m py_compile mifa.py core/*.py tools/*.py
 python3 -m unittest discover -s tests -v
 python3 mifa.py check
-python3 tools/doctor.py --require-compilers
+python3 tools/verify.py --strict
 
 python3 tools/release_validate.py \
   --compile \

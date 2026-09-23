@@ -34,9 +34,9 @@ jobs:
         run: |
           python3 mifa.py check
 
-      - name: Environment doctor
+      - name: Environment verify
         run: |
-          python3 tools/doctor.py --require-compilers
+          python3 tools/verify.py --strict
 
       - name: Full release compile matrix
         run: |
