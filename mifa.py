@@ -54,7 +54,8 @@ def show_method(catalog, method_id):
 
     if method is None:
         print(
-            f"[!] Method not found: {method_id}"
+            f"[!] Method not found: "
+            f"{method_id}"
         )
         return
 
@@ -175,7 +176,7 @@ def get_method_and_preset(
     if not template:
         raise ValueError(
             f"Method '{method_id}' "
-            f"does not define a template"
+            "does not define a template"
         )
 
     template_path = (
@@ -238,11 +239,27 @@ def validate_preset(
         print(f"[!] {exc}")
         return False
 
-    if not run_compatibility_check(
-        checker,
-        method,
-        preset
-    ):
+    architecture = preset.get(
+        "architecture"
+    )
+
+    supported = method.get(
+        "architectures",
+        []
+    )
+
+    if architecture not in supported:
+        print(
+            "[!] Preset validation failed"
+        )
+
+        print(
+            f"    - Architecture "
+            f"'{architecture}' is not "
+            f"supported by method "
+            f"'{method.get('id')}'"
+        )
+
         return False
 
     print(
@@ -261,12 +278,17 @@ def validate_preset(
 
     print(
         f"    Architecture : "
-        f"{preset.get('architecture')}"
+        f"{architecture}"
     )
 
     print(
         f"    Build type   : "
         f"{preset.get('build_type', '-')}"
+    )
+
+    print(
+        f"    Payload req. : "
+        f"{method.get('requires_payload', False)}"
     )
 
     return True
@@ -353,7 +375,9 @@ def create_build(
             method=method,
             preset=preset,
             build_id=build_id,
-            build_dir=build_dir
+            build_dir=build_dir,
+            payload_info=payload_info,
+            payload_type=payload_type
         )
 
         print(
