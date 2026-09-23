@@ -1,0 +1,13 @@
+{
+  "id": "payload-test",
+  "name": "Payload Test",
+  "language": "c",
+  "description": "Harmless method used to validate required payload handling.",
+  "architectures": ["x64"],
+  "requires_payload": true,
+  "payload_types": ["raw"],
+  "requires_target": false,
+  "template": "templates/main.c.tmpl",
+  "source_name": "main.c",
+  "output_name": "payload-test.exe"
+}

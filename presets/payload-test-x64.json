@@ -1,0 +1,7 @@
+{
+  "id": "payload-test-x64",
+  "name": "Payload Test x64",
+  "method": "payload-test",
+  "architecture": "x64",
+  "build_type": "release"
+}
