@@ -19,45 +19,28 @@ class BuildManager:
         ).isoformat()
 
     def _next_build_id(self):
-        pattern = re.compile(
-            r"^K-(\d{4})$"
-        )
-
+        pattern = re.compile(r"^K-(\d{4})$")
         highest = 0
 
         for path in self.builds_dir.iterdir():
             if not path.is_dir():
                 continue
 
-            match = pattern.match(
-                path.name
-            )
+            match = pattern.match(path.name)
 
             if match:
-                number = int(
-                    match.group(1)
-                )
-
                 highest = max(
                     highest,
-                    number
+                    int(match.group(1))
                 )
 
         return f"K-{highest + 1:04d}"
 
-    def _manifest_path(
-        self,
-        build_dir: Path
-    ):
+    def _manifest_path(self, build_dir: Path):
         return build_dir / "build.json"
 
-    def _read_manifest(
-        self,
-        build_dir: Path
-    ):
-        path = self._manifest_path(
-            build_dir
-        )
+    def _read_manifest(self, build_dir: Path):
+        path = self._manifest_path(build_dir)
 
         with path.open(
             "r",
@@ -65,14 +48,8 @@ class BuildManager:
         ) as f:
             return json.load(f)
 
-    def _write_manifest(
-        self,
-        build_dir: Path,
-        data
-    ):
-        path = self._manifest_path(
-            build_dir
-        )
+    def _write_manifest(self, build_dir: Path, data):
+        path = self._manifest_path(build_dir)
 
         with path.open(
             "w",
@@ -84,17 +61,12 @@ class BuildManager:
                 indent=4
             )
 
-    def _sha256(
-        self,
-        file_path: Path
-    ):
+    def _sha256(self, file_path: Path):
         digest = hashlib.sha256()
 
         with file_path.open("rb") as f:
             while True:
-                chunk = f.read(
-                    1024 * 1024
-                )
+                chunk = f.read(1024 * 1024)
 
                 if not chunk:
                     break
@@ -103,35 +75,15 @@ class BuildManager:
 
         return digest.hexdigest()
 
-    def create(
-        self,
-        method,
-        preset
-    ):
-        build_id = (
-            self._next_build_id()
-        )
+    def create(self, method, preset):
+        build_id = self._next_build_id()
+        build_dir = self.builds_dir / build_id
 
-        build_dir = (
-            self.builds_dir
-            / build_id
-        )
+        source_dir = build_dir / "source"
+        output_dir = build_dir / "output"
 
-        source_dir = (
-            build_dir / "source"
-        )
-
-        output_dir = (
-            build_dir / "output"
-        )
-
-        source_dir.mkdir(
-            parents=True
-        )
-
-        output_dir.mkdir(
-            parents=True
-        )
+        source_dir.mkdir(parents=True)
+        output_dir.mkdir(parents=True)
 
         build_data = {
             "build_id": build_id,
@@ -142,9 +94,7 @@ class BuildManager:
             "method": {
                 "id": method.get("id"),
                 "name": method.get("name"),
-                "language": method.get(
-                    "language"
-                )
+                "language": method.get("language")
             },
 
             "preset": {
@@ -155,7 +105,9 @@ class BuildManager:
                 "build_type": preset.get(
                     "build_type"
                 )
-            }
+            },
+
+            "payload": None
         }
 
         self._write_manifest(
@@ -164,6 +116,31 @@ class BuildManager:
         )
 
         return build_id, build_dir
+
+    def attach_payload(
+        self,
+        build_dir: Path,
+        payload_info
+    ):
+        data = self._read_manifest(
+            build_dir
+        )
+
+        data["payload"] = {
+            "file": payload_info["file"],
+            "name": payload_info["name"],
+            "size_bytes": payload_info[
+                "size_bytes"
+            ],
+            "sha256": payload_info[
+                "sha256"
+            ]
+        }
+
+        self._write_manifest(
+            build_dir,
+            data
+        )
 
     def mark_success(
         self,
@@ -180,9 +157,7 @@ class BuildManager:
         )
 
         data["status"] = "success"
-        data["completed_at"] = (
-            self._now()
-        )
+        data["completed_at"] = self._now()
 
         data["source"] = {
             "file": str(
@@ -232,10 +207,7 @@ class BuildManager:
         )
 
         data["status"] = "failed"
-        data["completed_at"] = (
-            self._now()
-        )
-
+        data["completed_at"] = self._now()
         data["error"] = str(error)
 
         self._write_manifest(

@@ -8,6 +8,7 @@ from core.presets import PresetStore
 from core.builds import BuildManager
 from core.generator import SourceGenerator
 from core.compiler import Compiler
+from core.payloads import PayloadManager
 
 
 ROOT = Path(__file__).resolve().parent
@@ -47,13 +48,8 @@ def list_methods(catalog):
         )
 
 
-def show_method(
-    catalog,
-    method_id
-):
-    method = catalog.get(
-        method_id
-    )
+def show_method(catalog, method_id):
+    method = catalog.get(method_id)
 
     if method is None:
         print(
@@ -138,23 +134,15 @@ def get_validated_method_and_preset(
     store,
     preset_id
 ):
-    preset = store.get(
-        preset_id
-    )
+    preset = store.get(preset_id)
 
     if preset is None:
         raise ValueError(
-            f"Preset not found: "
-            f"{preset_id}"
+            f"Preset not found: {preset_id}"
         )
 
-    method_id = preset.get(
-        "method"
-    )
-
-    method = catalog.get(
-        method_id
-    )
+    method_id = preset.get("method")
+    method = catalog.get(method_id)
 
     if method is None:
         raise ValueError(
@@ -178,9 +166,7 @@ def get_validated_method_and_preset(
             f"method '{method_id}'"
         )
 
-    template = method.get(
-        "template"
-    )
+    template = method.get("template")
 
     if not template:
         raise ValueError(
@@ -253,7 +239,9 @@ def create_build(
     manager,
     generator,
     compiler,
-    preset_id
+    payload_manager,
+    preset_id,
+    payload_path=None
 ):
     build_dir = None
 
@@ -281,6 +269,31 @@ def create_build(
             f"[+] Build workspace created: "
             f"{build_id}"
         )
+
+        payload_info = None
+
+        if payload_path is not None:
+            payload_info = (
+                payload_manager.prepare(
+                    Path(payload_path),
+                    build_dir
+                )
+            )
+
+            manager.attach_payload(
+                build_dir,
+                payload_info
+            )
+
+            print(
+                f"[+] Payload staged: "
+                f"{payload_info['name']}"
+            )
+
+            print(
+                f"[+] Payload SHA256: "
+                f"{payload_info['sha256']}"
+            )
 
         source_path = (
             generator.generate(
@@ -311,9 +324,7 @@ def create_build(
             )
         )
 
-        output_path = result[
-            "output"
-        ]
+        output_path = result["output"]
 
         print(
             "[+] Compilation successful"
@@ -349,6 +360,17 @@ def create_build(
             f"    Build type   : "
             f"{preset.get('build_type', '-')}"
         )
+
+        if payload_info:
+            print(
+                f"    Payload      : "
+                f"{payload_info['name']}"
+            )
+
+            print(
+                f"    Payload size : "
+                f"{payload_info['size_bytes']} bytes"
+            )
 
         print(
             f"    Compiler     : "
@@ -387,7 +409,6 @@ def create_build(
                     build_dir,
                     exc
                 )
-
             except Exception:
                 pass
 
@@ -399,15 +420,11 @@ def create_build(
 def build_parser():
     parser = argparse.ArgumentParser(
         prog="mifa",
-        description=(
-            "Mifa modular build system"
-        )
+        description="Mifa modular build system"
     )
 
-    subparsers = (
-        parser.add_subparsers(
-            dest="command"
-        )
+    subparsers = parser.add_subparsers(
+        dest="command"
     )
 
     subparsers.add_parser(
@@ -415,14 +432,9 @@ def build_parser():
         help="List installed methods"
     )
 
-    info_parser = (
-        subparsers.add_parser(
-            "info",
-            help=(
-                "Show information "
-                "about a method"
-            )
-        )
+    info_parser = subparsers.add_parser(
+        "info",
+        help="Show information about a method"
     )
 
     info_parser.add_argument(
@@ -435,11 +447,9 @@ def build_parser():
         help="List installed presets"
     )
 
-    validate_parser = (
-        subparsers.add_parser(
-            "validate",
-            help="Validate a preset"
-        )
+    validate_parser = subparsers.add_parser(
+        "validate",
+        help="Validate a preset"
     )
 
     validate_parser.add_argument(
@@ -447,20 +457,21 @@ def build_parser():
         help="Preset ID"
     )
 
-    build_command = (
-        subparsers.add_parser(
-            "build",
-            help=(
-                "Generate and compile "
-                "a new build"
-            )
-        )
+    build_command = subparsers.add_parser(
+        "build",
+        help="Generate and compile a new build"
     )
 
     build_command.add_argument(
         "--preset",
         required=True,
         help="Preset ID"
+    )
+
+    build_command.add_argument(
+        "--payload",
+        required=False,
+        help="Path to payload/input file"
     )
 
     return parser
@@ -482,11 +493,9 @@ def main():
         BUILDS_DIR
     )
 
-    generator = (
-        SourceGenerator()
-    )
-
+    generator = SourceGenerator()
     compiler = Compiler()
+    payload_manager = PayloadManager()
 
     show_banner()
 
@@ -520,7 +529,9 @@ def main():
             builds,
             generator,
             compiler,
-            args.preset
+            payload_manager,
+            args.preset,
+            args.payload
         )
 
     else:

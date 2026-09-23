@@ -4,6 +4,7 @@
   "language": "c",
   "description": "Harmless test method used to validate Mifa's method system.",
   "architectures": ["x64", "x86"],
+  "requires_payload": false,
   "payload_types": [],
   "requires_target": false,
   "template": "templates/main.c.tmpl",
