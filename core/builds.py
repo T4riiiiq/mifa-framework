@@ -120,13 +120,13 @@ class BuildManager:
     def attach_payload(
         self,
         build_dir: Path,
-        payload_info
+        payload_info,
+        payload_type
     ):
-        data = self._read_manifest(
-            build_dir
-        )
+        data = self._read_manifest(build_dir)
 
         data["payload"] = {
+            "type": payload_type,
             "file": payload_info["file"],
             "name": payload_info["name"],
             "size_bytes": payload_info[
@@ -148,9 +148,7 @@ class BuildManager:
         source_path: Path,
         compile_result
     ):
-        data = self._read_manifest(
-            build_dir
-        )
+        data = self._read_manifest(build_dir)
 
         output_path = Path(
             compile_result["output"]
@@ -202,9 +200,7 @@ class BuildManager:
         build_dir: Path,
         error
     ):
-        data = self._read_manifest(
-            build_dir
-        )
+        data = self._read_manifest(build_dir)
 
         data["status"] = "failed"
         data["completed_at"] = self._now()

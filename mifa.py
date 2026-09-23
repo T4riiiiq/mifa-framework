@@ -9,6 +9,7 @@ from core.builds import BuildManager
 from core.generator import SourceGenerator
 from core.compiler import Compiler
 from core.payloads import PayloadManager
+from core.compatibility import CompatibilityChecker
 
 
 ROOT = Path(__file__).resolve().parent
@@ -53,28 +54,27 @@ def show_method(catalog, method_id):
 
     if method is None:
         print(
-            f"[!] Method not found: "
-            f"{method_id}"
+            f"[!] Method not found: {method_id}"
         )
         return
 
     print(
-        f"ID           : "
+        f"ID              : "
         f"{method.get('id', '-')}"
     )
 
     print(
-        f"Name         : "
+        f"Name            : "
         f"{method.get('name', '-')}"
     )
 
     print(
-        f"Language     : "
+        f"Language        : "
         f"{method.get('language', '-')}"
     )
 
     print(
-        "Architectures: "
+        "Architectures   : "
         + ", ".join(
             method.get(
                 "architectures",
@@ -84,22 +84,41 @@ def show_method(catalog, method_id):
     )
 
     print(
-        f"Template     : "
+        f"Requires payload: "
+        f"{method.get('requires_payload', False)}"
+    )
+
+    payload_types = method.get(
+        "payload_types",
+        []
+    )
+
+    print(
+        "Payload types   : "
+        + (
+            ", ".join(payload_types)
+            if payload_types
+            else "-"
+        )
+    )
+
+    print(
+        f"Template        : "
         f"{method.get('template', '-')}"
     )
 
     print(
-        f"Source name  : "
+        f"Source name     : "
         f"{method.get('source_name', '-')}"
     )
 
     print(
-        f"Output name  : "
+        f"Output name     : "
         f"{method.get('output_name', 'output.exe')}"
     )
 
     print(
-        f"Description  : "
+        f"Description     : "
         f"{method.get('description', '-')}"
     )
 
@@ -129,7 +148,7 @@ def list_presets(store):
         )
 
 
-def get_validated_method_and_preset(
+def get_method_and_preset(
     catalog,
     store,
     preset_id
@@ -142,6 +161,7 @@ def get_validated_method_and_preset(
         )
 
     method_id = preset.get("method")
+
     method = catalog.get(method_id)
 
     if method is None:
@@ -150,28 +170,12 @@ def get_validated_method_and_preset(
             f"does not exist: {method_id}"
         )
 
-    architecture = preset.get(
-        "architecture"
-    )
-
-    supported = method.get(
-        "architectures",
-        []
-    )
-
-    if architecture not in supported:
-        raise ValueError(
-            f"Architecture '{architecture}' "
-            f"is not supported by "
-            f"method '{method_id}'"
-        )
-
     template = method.get("template")
 
     if not template:
         raise ValueError(
             f"Method '{method_id}' "
-            "does not define a template"
+            f"does not define a template"
         )
 
     template_path = (
@@ -188,22 +192,57 @@ def get_validated_method_and_preset(
     return method, preset
 
 
+def run_compatibility_check(
+    checker,
+    method,
+    preset,
+    payload_path=None,
+    payload_type=None
+):
+    errors = checker.validate(
+        method=method,
+        preset=preset,
+        payload_path=payload_path,
+        payload_type=payload_type
+    )
+
+    if errors:
+        print(
+            "[!] Compatibility validation failed"
+        )
+
+        for error in errors:
+            print(
+                f"    - {error}"
+            )
+
+        return False
+
+    return True
+
+
 def validate_preset(
     catalog,
     store,
+    checker,
     preset_id
 ):
     try:
-        method, preset = (
-            get_validated_method_and_preset(
-                catalog,
-                store,
-                preset_id
-            )
+        method, preset = get_method_and_preset(
+            catalog,
+            store,
+            preset_id
         )
 
     except Exception as exc:
         print(f"[!] {exc}")
+        return False
+
+    if not run_compatibility_check(
+        checker,
+        method,
+        preset
+    ):
         return False
 
     print(
@@ -240,29 +279,38 @@ def create_build(
     generator,
     compiler,
     payload_manager,
+    compatibility,
     preset_id,
-    payload_path=None
+    payload_path=None,
+    payload_type=None
 ):
     build_dir = None
 
     try:
-        method, preset = (
-            get_validated_method_and_preset(
-                catalog,
-                store,
-                preset_id
-            )
+        method, preset = get_method_and_preset(
+            catalog,
+            store,
+            preset_id
         )
+
+        compatible = run_compatibility_check(
+            checker=compatibility,
+            method=method,
+            preset=preset,
+            payload_path=payload_path,
+            payload_type=payload_type
+        )
+
+        if not compatible:
+            return
 
         print(
-            "[+] Configuration validated"
+            "[+] Compatibility validation passed"
         )
 
-        build_id, build_dir = (
-            manager.create(
-                method=method,
-                preset=preset
-            )
+        build_id, build_dir = manager.create(
+            method=method,
+            preset=preset
         )
 
         print(
@@ -281,8 +329,9 @@ def create_build(
             )
 
             manager.attach_payload(
-                build_dir,
-                payload_info
+                build_dir=build_dir,
+                payload_info=payload_info,
+                payload_type=payload_type
             )
 
             print(
@@ -291,17 +340,20 @@ def create_build(
             )
 
             print(
+                f"[+] Payload type: "
+                f"{payload_type}"
+            )
+
+            print(
                 f"[+] Payload SHA256: "
                 f"{payload_info['sha256']}"
             )
 
-        source_path = (
-            generator.generate(
-                method=method,
-                preset=preset,
-                build_id=build_id,
-                build_dir=build_dir
-            )
+        source_path = generator.generate(
+            method=method,
+            preset=preset,
+            build_id=build_id,
+            build_dir=build_dir
         )
 
         print(
@@ -316,12 +368,10 @@ def create_build(
             build_dir=build_dir
         )
 
-        manifest = (
-            manager.mark_success(
-                build_dir=build_dir,
-                source_path=source_path,
-                compile_result=result
-            )
+        manifest = manager.mark_success(
+            build_dir=build_dir,
+            source_path=source_path,
+            compile_result=result
         )
 
         output_path = result["output"]
@@ -361,10 +411,15 @@ def create_build(
             f"{preset.get('build_type', '-')}"
         )
 
-        if payload_info:
+        if payload_info is not None:
             print(
                 f"    Payload      : "
                 f"{payload_info['name']}"
+            )
+
+            print(
+                f"    Payload type : "
+                f"{payload_type}"
             )
 
             print(
@@ -409,6 +464,7 @@ def create_build(
                     build_dir,
                     exc
                 )
+
             except Exception:
                 pass
 
@@ -474,6 +530,12 @@ def build_parser():
         help="Path to payload/input file"
     )
 
+    build_command.add_argument(
+        "--payload-type",
+        required=False,
+        help="Payload type"
+    )
+
     return parser
 
 
@@ -496,6 +558,7 @@ def main():
     generator = SourceGenerator()
     compiler = Compiler()
     payload_manager = PayloadManager()
+    compatibility = CompatibilityChecker()
 
     show_banner()
 
@@ -519,19 +582,22 @@ def main():
         validate_preset(
             catalog,
             presets,
+            compatibility,
             args.preset
         )
 
     elif args.command == "build":
         create_build(
-            catalog,
-            presets,
-            builds,
-            generator,
-            compiler,
-            payload_manager,
-            args.preset,
-            args.payload
+            catalog=catalog,
+            store=presets,
+            manager=builds,
+            generator=generator,
+            compiler=compiler,
+            payload_manager=payload_manager,
+            compatibility=compatibility,
+            preset_id=args.preset,
+            payload_path=args.payload,
+            payload_type=args.payload_type
         )
 
     else:
