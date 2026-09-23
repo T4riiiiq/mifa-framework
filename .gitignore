@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+builds/*
+!builds/.gitkeep
+
+payloads/*
+!payloads/.gitkeep
+
+.DS_Store
+.idea/
+.vscode/

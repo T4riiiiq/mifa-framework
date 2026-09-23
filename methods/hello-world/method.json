@@ -1,0 +1,9 @@
+{
+  "id": "hello-world",
+  "name": "Hello World",
+  "language": "c",
+  "description": "Harmless test method used to validate Mifa's method system.",
+  "architectures": ["x64", "x86"],
+  "payload_types": [],
+  "requires_target": false
+}

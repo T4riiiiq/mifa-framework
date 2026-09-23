@@ -1,0 +1,7 @@
+{
+  "id": "test-x64",
+  "name": "Test x64",
+  "method": "hello-world",
+  "architecture": "x64",
+  "build_type": "release"
+}
