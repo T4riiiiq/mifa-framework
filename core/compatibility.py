@@ -4,6 +4,89 @@ class CompatibilityChecker:
         "debug"
     }
 
+    SUPPORTED_PAYLOAD_TYPES = {
+        "raw",
+        "text",
+        "json",
+        "pe"
+    }
+
+    SUPPORTED_PAYLOAD_TRANSFORMS = {
+        "copy",
+        "base64",
+        "hex"
+    }
+
+    def _payload_contract(
+        self,
+        method
+    ):
+        contract = method.get(
+            "payload_contract"
+        )
+
+        if contract is None:
+            return {
+                "required":
+                    method.get(
+                        "requires_payload",
+                        False
+                    ),
+
+                "types":
+                    list(
+                        method.get(
+                            "payload_types",
+                            []
+                        )
+                    ),
+
+                "transforms": [
+                    "copy"
+                ],
+
+                "default_transform":
+                    "copy"
+            }
+
+        return {
+            "required":
+                contract.get(
+                    "required",
+                    method.get(
+                        "requires_payload",
+                        False
+                    )
+                ),
+
+            "types":
+                list(
+                    contract.get(
+                        "types",
+                        method.get(
+                            "payload_types",
+                            []
+                        )
+                    )
+                ),
+
+            "transforms":
+                list(
+                    contract.get(
+                        "transforms",
+                        [
+                            "copy"
+                        ]
+                    )
+                ),
+
+            "default_transform":
+                contract.get(
+                    "default_transform",
+                    "copy"
+                )
+        }
+
     def validate_preset(
         self,
         method,
@@ -70,6 +153,7 @@ class CompatibilityChecker:
         preset,
         payload_path=None,
         payload_type=None,
+        payload_transform=None,
         parameter_errors=None
     ):
         errors = self.validate_preset(
@@ -78,14 +162,24 @@ class CompatibilityChecker:
             parameter_errors=parameter_errors
         )
 
-        requires_payload = method.get(
-            "requires_payload",
-            False
+        contract = self._payload_contract(
+            method
         )
 
-        accepted_payload_types = method.get(
-            "payload_types",
-            []
+        requires_payload = contract[
+            "required"
+        ]
+
+        accepted_payload_types = (
+            contract[
+                "types"
+            ]
+        )
+
+        accepted_transforms = (
+            contract[
+                "transforms"
+            ]
         )
 
         if (
@@ -114,6 +208,15 @@ class CompatibilityChecker:
                 "without a payload"
             )
 
+        if (
+            payload_path is None
+            and payload_transform is not None
+        ):
+            errors.append(
+                "Payload transform was specified "
+                "without a payload"
+            )
+
         if payload_path is not None:
             if payload_type is None:
                 errors.append(
@@ -130,6 +233,46 @@ class CompatibilityChecker:
                     f"'{payload_type}' is not "
                     f"supported by method "
                     f"'{method.get('id')}'"
+                )
+
+            elif (
+                payload_type
+                not in self.SUPPORTED_PAYLOAD_TYPES
+            ):
+                errors.append(
+                    f"Payload type "
+                    f"'{payload_type}' is not "
+                    "supported by the Mifa "
+                    "payload engine"
+                )
+
+            selected_transform = (
+                payload_transform
+                or contract[
+                    "default_transform"
+                ]
+            )
+
+            if (
+                selected_transform
+                not in accepted_transforms
+            ):
+                errors.append(
+                    f"Payload transform "
+                    f"'{selected_transform}' is not "
+                    f"supported by method "
+                    f"'{method.get('id')}'"
+                )
+
+            elif (
+                selected_transform
+                not in self.SUPPORTED_PAYLOAD_TRANSFORMS
+            ):
+                errors.append(
+                    f"Payload transform "
+                    f"'{selected_transform}' is not "
+                    "supported by the Mifa "
+                    "payload engine"
                 )
 
         return errors

@@ -205,6 +205,11 @@ class BuildManager:
                     []
                 ),
 
+            "payload_contract":
+                method.get(
+                    "payload_contract"
+                ),
+
             "payload":
                 None
         }
@@ -233,6 +238,23 @@ class BuildManager:
             "type":
                 payload_type,
 
+            "transform":
+                payload_info.get(
+                    "transform",
+                    "copy"
+                ),
+
+            "source":
+                payload_info.get(
+                    "source"
+                ),
+
+            "staged":
+                payload_info.get(
+                    "staged"
+                ),
+
+            # Backward-compatible staged fields.
             "file":
                 payload_info[
                     "file"

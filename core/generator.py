@@ -172,6 +172,27 @@ class SourceGenerator:
                 "",
 
             "{{PAYLOAD_SHA256}}":
+                "",
+
+            "{{PAYLOAD_TRANSFORM}}":
+                "",
+
+            "{{PAYLOAD_SOURCE_NAME}}":
+                "",
+
+            "{{PAYLOAD_SOURCE_SIZE}}":
+                "",
+
+            "{{PAYLOAD_SOURCE_SHA256}}":
+                "",
+
+            "{{PAYLOAD_STAGED_NAME}}":
+                "",
+
+            "{{PAYLOAD_STAGED_SIZE}}":
+                "",
+
+            "{{PAYLOAD_STAGED_SHA256}}":
                 ""
         }
 
@@ -196,6 +217,70 @@ class SourceGenerator:
 
                 "{{PAYLOAD_SHA256}}":
                     payload_info.get(
+                        "sha256",
+                        ""
+                    ),
+
+                "{{PAYLOAD_TRANSFORM}}":
+                    payload_info.get(
+                        "transform",
+                        "copy"
+                    ),
+
+                "{{PAYLOAD_SOURCE_NAME}}":
+                    payload_info.get(
+                        "source",
+                        {}
+                    ).get(
+                        "name",
+                        ""
+                    ),
+
+                "{{PAYLOAD_SOURCE_SIZE}}":
+                    str(
+                        payload_info.get(
+                            "source",
+                            {}
+                        ).get(
+                            "size_bytes",
+                            ""
+                        )
+                    ),
+
+                "{{PAYLOAD_SOURCE_SHA256}}":
+                    payload_info.get(
+                        "source",
+                        {}
+                    ).get(
+                        "sha256",
+                        ""
+                    ),
+
+                "{{PAYLOAD_STAGED_NAME}}":
+                    payload_info.get(
+                        "staged",
+                        {}
+                    ).get(
+                        "name",
+                        ""
+                    ),
+
+                "{{PAYLOAD_STAGED_SIZE}}":
+                    str(
+                        payload_info.get(
+                            "staged",
+                            {}
+                        ).get(
+                            "size_bytes",
+                            ""
+                        )
+                    ),
+
+                "{{PAYLOAD_STAGED_SHA256}}":
+                    payload_info.get(
+                        "staged",
+                        {}
+                    ).get(
                         "sha256",
                         ""
                     )

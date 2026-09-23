@@ -124,6 +124,38 @@ def show_method(
         )
     )
 
+    payload_contract = method.get(
+        "payload_contract"
+    )
+
+    if payload_contract is not None:
+        transforms = payload_contract.get(
+            "transforms",
+            [
+                "copy"
+            ]
+        )
+
+        print(
+            "Payload xforms : "
+            + ", ".join(
+                transforms
+            )
+        )
+
+        print(
+            f"Payload default: "
+            f"{payload_contract.get('default_transform', 'copy')}"
+        )
+
+        print(
+            f"Payload limits : "
+            f"{payload_contract.get('min_size_bytes', 1)}"
+            f".."
+            f"{payload_contract.get('max_size_bytes', '-')}"
+            f" bytes"
+        )
+
     build_types = method.get(
         "build_types",
         [
@@ -425,6 +457,7 @@ def run_compatibility_check(
     preset,
     payload_path=None,
     payload_type=None,
+    payload_transform=None,
     parameter_errors=None
 ):
     errors = checker.validate(
@@ -432,6 +465,7 @@ def run_compatibility_check(
         preset=preset,
         payload_path=payload_path,
         payload_type=payload_type,
+        payload_transform=payload_transform,
         parameter_errors=parameter_errors
     )
 
@@ -555,6 +589,7 @@ def create_build(
     preset_id,
     payload_path=None,
     payload_type=None,
+    payload_transform=None,
     parameter_items=None
 ):
     build_dir = None
@@ -585,6 +620,7 @@ def create_build(
                 preset=preset,
                 payload_path=payload_path,
                 payload_type=payload_type,
+                payload_transform=payload_transform,
                 parameter_errors=parameter_errors
             )
         )
@@ -631,10 +667,13 @@ def create_build(
         if payload_path is not None:
             payload_info = (
                 payload_manager.prepare(
-                    Path(
+                    payload_path=Path(
                         payload_path
                     ),
-                    build_dir
+                    build_dir=build_dir,
+                    method=method,
+                    payload_type=payload_type,
+                    transform=payload_transform
                 )
             )
 
@@ -655,8 +694,18 @@ def create_build(
             )
 
             print(
-                f"[+] Payload SHA256: "
-                f"{payload_info['sha256']}"
+                f"[+] Payload transform: "
+                f"{payload_info['transform']}"
+            )
+
+            print(
+                f"[+] Source SHA256: "
+                f"{payload_info['source']['sha256']}"
+            )
+
+            print(
+                f"[+] Staged SHA256: "
+                f"{payload_info['staged']['sha256']}"
             )
 
         generated_files = (
@@ -757,8 +806,18 @@ def create_build(
             )
 
             print(
-                f"    Payload size : "
-                f"{payload_info['size_bytes']} bytes"
+                f"    Transform    : "
+                f"{payload_info['transform']}"
+            )
+
+            print(
+                f"    Source size  : "
+                f"{payload_info['source']['size_bytes']} bytes"
+            )
+
+            print(
+                f"    Staged size  : "
+                f"{payload_info['staged']['size_bytes']} bytes"
             )
 
         print(
@@ -893,6 +952,21 @@ def build_parser():
     )
 
     build_command.add_argument(
+        "--payload-transform",
+        required=False,
+        choices=[
+            "copy",
+            "base64",
+            "hex"
+        ],
+        help=(
+            "Payload staging transform. "
+            "Method contract controls which "
+            "transforms are accepted."
+        )
+    )
+
+    build_command.add_argument(
         "--set",
         dest="parameters",
         action="append",
@@ -993,6 +1067,7 @@ def main():
             preset_id=args.preset,
             payload_path=args.payload,
             payload_type=args.payload_type,
+            payload_transform=args.payload_transform,
             parameter_items=args.parameters
         )
 

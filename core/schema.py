@@ -49,9 +49,226 @@ class MethodSchemaValidator:
         "path"
     }
 
+    SUPPORTED_PAYLOAD_TYPES = {
+        "raw",
+        "text",
+        "json",
+        "pe"
+    }
+
+    SUPPORTED_PAYLOAD_TRANSFORMS = {
+        "copy",
+        "base64",
+        "hex"
+    }
+
     PARAMETER_NAME = re.compile(
         r"^[A-Za-z_][A-Za-z0-9_]*$"
     )
+
+    def _validate_payload_contract(
+        self,
+        method,
+        errors
+    ):
+        contract = method.get(
+            "payload_contract"
+        )
+
+        if contract is None:
+            return
+
+        if not isinstance(
+            contract,
+            dict
+        ):
+            errors.append(
+                "payload_contract must be an object"
+            )
+            return
+
+        required = contract.get(
+            "required"
+        )
+
+        if not isinstance(
+            required,
+            bool
+        ):
+            errors.append(
+                "payload_contract.required must "
+                "be true or false"
+            )
+
+        elif required != method.get(
+            "requires_payload"
+        ):
+            errors.append(
+                "payload_contract.required must "
+                "match requires_payload"
+            )
+
+        types = contract.get(
+            "types"
+        )
+
+        if not isinstance(
+            types,
+            list
+        ):
+            errors.append(
+                "payload_contract.types must be "
+                "a list"
+            )
+
+        else:
+            if required is True and not types:
+                errors.append(
+                    "payload_contract.required=true "
+                    "but types is empty"
+                )
+
+            if required is False and types:
+                errors.append(
+                    "payload_contract.required=false "
+                    "but types is not empty"
+                )
+
+            if (
+                types
+                != method.get(
+                    "payload_types"
+                )
+            ):
+                errors.append(
+                    "payload_contract.types must "
+                    "match payload_types"
+                )
+
+            for payload_type in types:
+                if (
+                    payload_type
+                    not in self.SUPPORTED_PAYLOAD_TYPES
+                ):
+                    errors.append(
+                        f"Unsupported payload type: "
+                        f"{payload_type}"
+                    )
+
+        transforms = contract.get(
+            "transforms",
+            [
+                "copy"
+            ]
+        )
+
+        if (
+            not isinstance(
+                transforms,
+                list
+            )
+            or not transforms
+        ):
+            errors.append(
+                "payload_contract.transforms must "
+                "be a non-empty list"
+            )
+
+        else:
+            for transform in transforms:
+                if (
+                    transform
+                    not in self.SUPPORTED_PAYLOAD_TRANSFORMS
+                ):
+                    errors.append(
+                        f"Unsupported payload transform: "
+                        f"{transform}"
+                    )
+
+        default_transform = contract.get(
+            "default_transform",
+            "copy"
+        )
+
+        if (
+            isinstance(
+                transforms,
+                list
+            )
+            and default_transform
+            not in transforms
+        ):
+            errors.append(
+                "payload_contract.default_transform "
+                "must be listed in transforms"
+            )
+
+        minimum = contract.get(
+            "min_size_bytes",
+            1
+        )
+
+        maximum = contract.get(
+            "max_size_bytes",
+            64 * 1024 * 1024
+        )
+
+        if (
+            not isinstance(
+                minimum,
+                int
+            )
+            or isinstance(
+                minimum,
+                bool
+            )
+            or minimum < 0
+        ):
+            errors.append(
+                "payload_contract.min_size_bytes "
+                "must be a non-negative integer"
+            )
+
+        if (
+            not isinstance(
+                maximum,
+                int
+            )
+            or isinstance(
+                maximum,
+                bool
+            )
+            or maximum < 1
+        ):
+            errors.append(
+                "payload_contract.max_size_bytes "
+                "must be a positive integer"
+            )
+
+        if (
+            isinstance(
+                minimum,
+                int
+            )
+            and not isinstance(
+                minimum,
+                bool
+            )
+            and isinstance(
+                maximum,
+                int
+            )
+            and not isinstance(
+                maximum,
+                bool
+            )
+            and minimum > maximum
+        ):
+            errors.append(
+                "payload_contract.min_size_bytes "
+                "cannot be greater than "
+                "max_size_bytes"
+            )
 
     def _validate_parameters(
         self,
@@ -492,6 +709,16 @@ class MethodSchemaValidator:
             )
 
         else:
+            for payload_type in payload_types:
+                if (
+                    payload_type
+                    not in self.SUPPORTED_PAYLOAD_TYPES
+                ):
+                    errors.append(
+                        f"Unsupported payload type: "
+                        f"{payload_type}"
+                    )
+
             if (
                 requires_payload is True
                 and not payload_types
@@ -629,6 +856,11 @@ class MethodSchemaValidator:
                 "output_name must be a "
                 "non-empty string"
             )
+
+        self._validate_payload_contract(
+            method,
+            errors
+        )
 
         self._validate_parameters(
             method,

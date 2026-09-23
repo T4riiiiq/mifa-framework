@@ -2,10 +2,34 @@
   "id": "payload-test",
   "name": "Payload Test",
   "language": "c",
-  "description": "Harmless method used to validate required payload handling.",
-  "architectures": ["x64"],
+  "description": "Harmless regression method used to validate payload contracts, staging, transforms, and provenance metadata.",
+  "architectures": [
+    "x64"
+  ],
   "requires_payload": true,
-  "payload_types": ["raw"],
+  "payload_types": [
+    "raw",
+    "text",
+    "json",
+    "pe"
+  ],
+  "payload_contract": {
+    "required": true,
+    "types": [
+      "raw",
+      "text",
+      "json",
+      "pe"
+    ],
+    "transforms": [
+      "copy",
+      "base64",
+      "hex"
+    ],
+    "default_transform": "copy",
+    "min_size_bytes": 1,
+    "max_size_bytes": 16777216
+  },
   "requires_target": false,
   "sources": [
     {
