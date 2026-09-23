@@ -10,6 +10,7 @@ from core.generator import SourceGenerator
 from core.compiler import Compiler
 from core.payloads import PayloadManager
 from core.compatibility import CompatibilityChecker
+from core.schema import MethodSchemaValidator
 
 
 ROOT = Path(__file__).resolve().parent
@@ -149,21 +150,94 @@ def list_presets(store):
         )
 
 
+def check_methods(catalog, schema):
+    methods = catalog.discover()
+
+    if not methods:
+        print("[i] No methods installed.")
+        return False
+
+    valid = 0
+    invalid = 0
+
+    for method in methods:
+        method_id = method.get(
+            "id",
+            "unknown"
+        )
+
+        errors = schema.validate(
+            method
+        )
+
+        print()
+
+        if errors:
+            invalid += 1
+
+            print(
+                f"[!] {method_id}"
+            )
+
+            for error in errors:
+                print(
+                    f"    - {error}"
+                )
+
+        else:
+            valid += 1
+
+            print(
+                f"[+] {method_id}"
+            )
+
+            print(
+                "    Contract valid"
+            )
+
+    print()
+    print("-" * 24)
+
+    total = valid + invalid
+
+    print(
+        f"{total} methods checked"
+    )
+
+    print(
+        f"{valid} valid"
+    )
+
+    print(
+        f"{invalid} invalid"
+    )
+
+    return invalid == 0
+
+
 def get_method_and_preset(
     catalog,
     store,
+    schema,
     preset_id
 ):
-    preset = store.get(preset_id)
+    preset = store.get(
+        preset_id
+    )
 
     if preset is None:
         raise ValueError(
-            f"Preset not found: {preset_id}"
+            f"Preset not found: "
+            f"{preset_id}"
         )
 
-    method_id = preset.get("method")
+    method_id = preset.get(
+        "method"
+    )
 
-    method = catalog.get(method_id)
+    method = catalog.get(
+        method_id
+    )
 
     if method is None:
         raise ValueError(
@@ -171,13 +245,23 @@ def get_method_and_preset(
             f"does not exist: {method_id}"
         )
 
-    template = method.get("template")
+    schema_errors = schema.validate(
+        method
+    )
 
-    if not template:
-        raise ValueError(
-            f"Method '{method_id}' "
-            "does not define a template"
+    if schema_errors:
+        message = "; ".join(
+            schema_errors
         )
+
+        raise ValueError(
+            f"Invalid method contract "
+            f"'{method_id}': {message}"
+        )
+
+    template = method.get(
+        "template"
+    )
 
     template_path = (
         Path(method["_path"])
@@ -225,18 +309,23 @@ def run_compatibility_check(
 def validate_preset(
     catalog,
     store,
-    checker,
+    schema,
     preset_id
 ):
     try:
-        method, preset = get_method_and_preset(
-            catalog,
-            store,
-            preset_id
+        method, preset = (
+            get_method_and_preset(
+                catalog,
+                store,
+                schema,
+                preset_id
+            )
         )
 
     except Exception as exc:
-        print(f"[!] {exc}")
+        print(
+            f"[!] {exc}"
+        )
         return False
 
     architecture = preset.get(
@@ -297,6 +386,7 @@ def validate_preset(
 def create_build(
     catalog,
     store,
+    schema,
     manager,
     generator,
     compiler,
@@ -309,30 +399,41 @@ def create_build(
     build_dir = None
 
     try:
-        method, preset = get_method_and_preset(
-            catalog,
-            store,
-            preset_id
+        method, preset = (
+            get_method_and_preset(
+                catalog,
+                store,
+                schema,
+                preset_id
+            )
         )
 
-        compatible = run_compatibility_check(
-            checker=compatibility,
-            method=method,
-            preset=preset,
-            payload_path=payload_path,
-            payload_type=payload_type
+        compatible = (
+            run_compatibility_check(
+                checker=compatibility,
+                method=method,
+                preset=preset,
+                payload_path=payload_path,
+                payload_type=payload_type
+            )
         )
 
         if not compatible:
             return
 
         print(
+            "[+] Method contract valid"
+        )
+
+        print(
             "[+] Compatibility validation passed"
         )
 
-        build_id, build_dir = manager.create(
-            method=method,
-            preset=preset
+        build_id, build_dir = (
+            manager.create(
+                method=method,
+                preset=preset
+            )
         )
 
         print(
@@ -371,13 +472,15 @@ def create_build(
                 f"{payload_info['sha256']}"
             )
 
-        source_path = generator.generate(
-            method=method,
-            preset=preset,
-            build_id=build_id,
-            build_dir=build_dir,
-            payload_info=payload_info,
-            payload_type=payload_type
+        source_path = (
+            generator.generate(
+                method=method,
+                preset=preset,
+                build_id=build_id,
+                build_dir=build_dir,
+                payload_info=payload_info,
+                payload_type=payload_type
+            )
         )
 
         print(
@@ -392,13 +495,17 @@ def create_build(
             build_dir=build_dir
         )
 
-        manifest = manager.mark_success(
-            build_dir=build_dir,
-            source_path=source_path,
-            compile_result=result
+        manifest = (
+            manager.mark_success(
+                build_dir=build_dir,
+                source_path=source_path,
+                compile_result=result
+            )
         )
 
-        output_path = result["output"]
+        output_path = result[
+            "output"
+        ]
 
         print(
             "[+] Compilation successful"
@@ -488,7 +595,6 @@ def create_build(
                     build_dir,
                     exc
                 )
-
             except Exception:
                 pass
 
@@ -503,8 +609,10 @@ def build_parser():
         description="Mifa modular build system"
     )
 
-    subparsers = parser.add_subparsers(
-        dest="command"
+    subparsers = (
+        parser.add_subparsers(
+            dest="command"
+        )
     )
 
     subparsers.add_parser(
@@ -512,9 +620,16 @@ def build_parser():
         help="List installed methods"
     )
 
-    info_parser = subparsers.add_parser(
-        "info",
-        help="Show information about a method"
+    subparsers.add_parser(
+        "check",
+        help="Validate all method contracts"
+    )
+
+    info_parser = (
+        subparsers.add_parser(
+            "info",
+            help="Show information about a method"
+        )
     )
 
     info_parser.add_argument(
@@ -527,9 +642,11 @@ def build_parser():
         help="List installed presets"
     )
 
-    validate_parser = subparsers.add_parser(
-        "validate",
-        help="Validate a preset"
+    validate_parser = (
+        subparsers.add_parser(
+            "validate",
+            help="Validate a preset"
+        )
     )
 
     validate_parser.add_argument(
@@ -537,9 +654,11 @@ def build_parser():
         help="Preset ID"
     )
 
-    build_command = subparsers.add_parser(
-        "build",
-        help="Generate and compile a new build"
+    build_command = (
+        subparsers.add_parser(
+            "build",
+            help="Generate and compile a new build"
+        )
     )
 
     build_command.add_argument(
@@ -583,12 +702,19 @@ def main():
     compiler = Compiler()
     payload_manager = PayloadManager()
     compatibility = CompatibilityChecker()
+    schema = MethodSchemaValidator()
 
     show_banner()
 
     if args.command == "methods":
         list_methods(
             catalog
+        )
+
+    elif args.command == "check":
+        check_methods(
+            catalog,
+            schema
         )
 
     elif args.command == "info":
@@ -606,7 +732,7 @@ def main():
         validate_preset(
             catalog,
             presets,
-            compatibility,
+            schema,
             args.preset
         )
 
@@ -614,6 +740,7 @@ def main():
         create_build(
             catalog=catalog,
             store=presets,
+            schema=schema,
             manager=builds,
             generator=generator,
             compiler=compiler,
