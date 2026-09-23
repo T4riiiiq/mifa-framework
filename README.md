@@ -2,47 +2,63 @@
 
 Mifa is a modular Windows research and build framework written in Python.
 
-It generates, validates, cross-compiles, and tracks reusable C/C++ methods for Windows internals, PE analysis, process inspection, module inspection, and virtual-memory research.
+It generates, validates, cross-compiles, and tracks reusable C/C++ methods for
+Windows internals, PE analysis, process and module inspection, virtual-memory
+research, and reusable local Windows runtime foundations.
 
-**Current version:** `1.0.0`
+**Current version:** `1.1.0`
 
 ---
 
 ## Status
 
-Mifa v1.0 includes:
+Mifa v1.1 contains:
 
-- 21 valid method contracts
-- 18 Windows research methods
-- 3 regression/test methods
-- x64 build validation
-- x64 Windows runtime validation
-- x86 build support
-- Build provenance and SHA-256 tracking
+- 28 valid method contracts
+- 24 Windows research/foundation methods
+- 4 regression/test methods
+- 48 presets
+- typed build-time parameters
+- runtime-argument contracts
+- x64 and x86 MinGW-w64 build support
+- automated release validation
+- build provenance and SHA-256 tracking
 
-> x86 runtime validation is not claimed for v1.0.
+Windows x64 and x86 runtime smoke validation has been completed for the Phase 2 foundation set.
 
 ---
 
 ## Architecture
 
 ```text
-Method
-  ↓
+Method Contract
+      ↓
 Preset
-  ↓
+      ↓
+Parameter Resolution
+      ↓
 Compatibility Validation
-  ↓
+      ↓
 Source Generation
-  ↓
+      ↓
 MinGW-w64 Compilation
-  ↓
+      ↓
 Build Manifest
-  ↓
+      ↓
 Windows Output
 ```
 
-Every build receives a unique identifier:
+Parameter precedence is:
+
+```text
+CLI --set
+   ↓
+Preset parameters
+   ↓
+Method defaults
+```
+
+Every normal Mifa build receives a unique identifier:
 
 ```text
 K-0001
@@ -50,8 +66,6 @@ K-0002
 K-0003
 ...
 ```
-
-Each build workspace records generated source files, compiler information, output metadata, and SHA-256 hashes.
 
 ---
 
@@ -62,7 +76,11 @@ Each build workspace records generated source files, compiler information, outpu
 - Schema validation
 - Architecture compatibility validation
 - Payload contract validation
-- Payload staging
+- Typed method parameters
+- Repeatable `--set KEY=VALUE`
+- Preset parameter defaults
+- `choices`, `min`, and `max` parameter constraints
+- Runtime-argument metadata
 - Multi-file source generation
 - C compilation
 - C++17 compilation
@@ -74,12 +92,15 @@ Each build workspace records generated source files, compiler information, outpu
 - Build manifests
 - Compiler command provenance
 - Output SHA-256 hashing
+- Environment doctor
+- Automated release validation
+- Curated Windows smoke bundles
 
 ---
 
 ## Method Catalog
 
-### Process
+### Process and Threads
 
 | Method | Purpose |
 |---|---|
@@ -87,6 +108,7 @@ Each build workspace records generated source files, compiler information, outpu
 | `win32-process-enum` | Enumerate running processes |
 | `win32-process-tree` | Display a process descendant tree |
 | `win32-thread-enum` | Enumerate threads belonging to a PID |
+| `win32-local-thread` | Benign local worker-thread lifecycle |
 
 ### Modules and Runtime Images
 
@@ -95,14 +117,19 @@ Each build workspace records generated source files, compiler information, outpu
 | `win32-module-enum` | Enumerate loaded modules |
 | `win32-loaded-image` | Translate an RVA using the actual loaded module base |
 | `win32-module-layout` | Correlate PE sections with runtime addresses |
+| `win32-api-resolve` | Resolve and report a Win32 export address |
+| `win32-dll-load-info` | Map a DLL without resolving dependencies and report module information |
+| `win32-runtime-helper` | Multi-source C++ helper architecture foundation |
 
-### Virtual Memory
+### Virtual Memory and Mapping
 
 | Method | Purpose |
 |---|---|
 | `win32-memory-map` | Enumerate virtual-memory regions |
 | `win32-memory-region` | Inspect one virtual-memory region |
-| `win32-self-memory-lab` | Benign local memory allocation and RW -> R transition |
+| `win32-self-memory-lab` | Benign local allocation and RW -> R transition |
+| `win32-local-buffer` | Parameterized local buffer lifecycle |
+| `win32-file-map` | Read-only file mapping with bounded hex preview |
 
 ### PE Analysis
 
@@ -124,12 +151,13 @@ Each build workspace records generated source files, compiler information, outpu
 | `hello-world` | C generation and compilation regression |
 | `cpp-hello` | C++ generation and compilation regression |
 | `payload-test` | Payload contract and staging regression |
+| `parameter-test` | Parameter rendering and runtime-contract regression |
 
 ---
 
 ## Requirements
 
-Mifa v1.0 uses only the Python standard library.
+Mifa uses only the Python standard library at runtime.
 
 Build dependencies:
 
@@ -148,34 +176,32 @@ x86 C    : i686-w64-mingw32-gcc
 x86 C++  : i686-w64-mingw32-g++
 ```
 
+Check the local environment:
+
+```bash
+python3 tools/doctor.py --require-compilers
+```
+
 ---
 
 ## Usage
 
-List available methods:
+List methods:
 
 ```bash
 python3 mifa.py methods
 ```
 
-Validate the method catalog:
+Validate method contracts:
 
 ```bash
 python3 mifa.py check
 ```
 
-Expected v1.0 result:
-
-```text
-21 methods checked
-21 valid
-0 invalid
-```
-
 Inspect a method:
 
 ```bash
-python3 mifa.py info win32-pe-info
+python3 mifa.py info win32-local-buffer
 ```
 
 List presets:
@@ -187,13 +213,23 @@ python3 mifa.py presets
 Validate a preset:
 
 ```bash
-python3 mifa.py validate win32-pe-info-x64
+python3 mifa.py validate win32-local-buffer-x64
 ```
 
-Build a method:
+Build with preset defaults:
 
 ```bash
-python3 mifa.py build --preset win32-pe-info-x64
+python3 mifa.py build \
+  --preset win32-local-buffer-x64
+```
+
+Override declared parameters:
+
+```bash
+python3 mifa.py build \
+  --preset win32-local-buffer-x64 \
+  --set buffer_size=8192 \
+  --set fill_byte=90
 ```
 
 ---
@@ -203,29 +239,62 @@ python3 mifa.py build --preset win32-pe-info-x64
 Example:
 
 ```text
-builds/K-0027/
+builds/K-0030/
 ├── build.json
 ├── input/
 ├── source/
 │   └── main.cpp
 └── output/
-    └── win32-pe-bytes.exe
+    └── win32-local-buffer.exe
 ```
 
-The build manifest tracks:
+The build manifest records:
 
 ```text
 Build ID
 Method
 Architecture
 Build type
-Build status
+Resolved parameters
+Runtime-argument contract
+Payload metadata
 Generated sources
 Compiler command
-Payload metadata
 Output filename
 Output size
 Output SHA-256
+```
+
+---
+
+## Release Validation
+
+Run the full automated release gate:
+
+```bash
+python3 -m py_compile mifa.py core/*.py tools/*.py
+python3 -m unittest discover -s tests -v
+python3 mifa.py check
+python3 tools/doctor.py --require-compilers
+
+python3 tools/release_validate.py \
+  --compile \
+  --json dist/v1.1-release-validation.json
+```
+
+The release validator compiles every payload-free preset in a temporary
+workspace, so the compile matrix does not pollute `builds/`.
+
+Prepare the curated x86 Windows smoke set:
+
+```bash
+python3 tools/prepare_smoke.py --arch x86
+```
+
+Output:
+
+```text
+dist/v1.1-smoke-x86/
 ```
 
 ---
@@ -244,47 +313,38 @@ Mifa/
 ├── builds/
 ├── dist/
 ├── docs/
-└── tests/
+├── tools/
+├── tests/
+└── .github/
 ```
 
 ---
 
-## Validation
+## Validation History
 
-The Mifa v1.0 x64 catalog was cross-compiled using MinGW-w64 on Kali Linux and runtime-tested on Windows x64.
+Mifa v1.0 established the Windows/PE foundation and x64 runtime baseline.
 
-Validation covered:
+Phase 2 Batch 1 added the typed parameter engine and passed its unit/build
+validation.
 
-- Process inspection
-- Process enumeration
-- Process trees
-- Thread enumeration
-- Module enumeration
-- Loaded module addressing
-- Runtime module layout
-- PE header parsing
-- RVA translation
-- Import parsing
-- Export parsing
-- Data directories
-- Base relocations
-- Section lookup
-- RVA byte inspection
-- Virtual-memory mapping
-- Memory-region inspection
-- Local memory lifecycle
+Phase 2 Batch 2 added six Windows foundation methods. All six compiled for x64
+and successfully completed Windows x64 runtime smoke testing.
 
-x86 presets and build support are included, but x86 runtime validation remains a future validation task.
+The final v1.1 release gate adds automated x64/x86 compile-matrix validation
+and a curated Windows x86 runtime smoke test before the `v1.1.0` tag is
+created.
 
 ---
 
 ## Documentation
 
-See:
-
 ```text
 docs/V1_METHOD_MATRIX.md
 docs/RELEASE_NOTES_v1.0.md
+docs/PHASE2_BATCH1_ENGINE.md
+docs/PHASE2_BATCH2_TECHNIQUE_FOUNDATIONS.md
+docs/V1_1_VALIDATION.md
+docs/RELEASE_NOTES_v1.1.md
 ```
 
 ---
@@ -292,5 +352,5 @@ docs/RELEASE_NOTES_v1.0.md
 ## Version
 
 ```text
-Mifa 1.0.0
+Mifa 1.1.0
 ```

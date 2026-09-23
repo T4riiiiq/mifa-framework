@@ -1,0 +1,45 @@
+name: Mifa CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install MinGW-w64
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mingw-w64
+
+      - name: Python syntax
+        run: |
+          python3 -m py_compile mifa.py core/*.py tools/*.py
+
+      - name: Unit tests
+        run: |
+          python3 -m unittest discover -s tests -v
+
+      - name: Method contracts
+        run: |
+          python3 mifa.py check
+
+      - name: Environment doctor
+        run: |
+          python3 tools/doctor.py --require-compilers
+
+      - name: Release compile matrix
+        run: |
+          python3 tools/release_validate.py \
+            --compile \
+            --json dist/ci-release-validation.json
