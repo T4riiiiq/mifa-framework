@@ -1,0 +1,7 @@
+{
+  "id": "win32-pe-imports-x64",
+  "name": "Win32 PE Imports x64",
+  "method": "win32-pe-imports",
+  "architecture": "x64",
+  "build_type": "release"
+}

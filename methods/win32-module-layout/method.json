@@ -1,0 +1,21 @@
+{
+  "id": "win32-module-layout",
+  "name": "Win32 Module Runtime Layout",
+  "language": "cpp",
+  "description": "Correlates on-disk PE sections with a module's actual runtime base address.",
+  "architectures": [
+    "x64",
+    "x86"
+  ],
+  "requires_payload": false,
+  "payload_types": [],
+  "requires_target": false,
+  "sources": [
+    {
+      "template": "templates/main.cpp.tmpl",
+      "output": "main.cpp",
+      "compile": true
+    }
+  ],
+  "output_name": "win32-module-layout.exe"
+}

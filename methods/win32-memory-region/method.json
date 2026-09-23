@@ -1,0 +1,21 @@
+{
+  "id": "win32-memory-region",
+  "name": "Win32 Memory Region",
+  "language": "cpp",
+  "description": "Queries one virtual memory region in a Windows process using VirtualQueryEx.",
+  "architectures": [
+    "x64",
+    "x86"
+  ],
+  "requires_payload": false,
+  "payload_types": [],
+  "requires_target": false,
+  "sources": [
+    {
+      "template": "templates/main.cpp.tmpl",
+      "output": "main.cpp",
+      "compile": true
+    }
+  ],
+  "output_name": "win32-memory-region.exe"
+}

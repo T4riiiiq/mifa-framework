@@ -1,0 +1,7 @@
+{
+  "id": "win32-process-tree-x86",
+  "name": "Win32 Process Tree x86",
+  "method": "win32-process-tree",
+  "architecture": "x86",
+  "build_type": "release"
+}

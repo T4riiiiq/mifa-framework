@@ -1,0 +1,7 @@
+{
+  "id": "win32-module-layout-x86",
+  "name": "Win32 Module Runtime Layout x86",
+  "method": "win32-module-layout",
+  "architecture": "x86",
+  "build_type": "release"
+}

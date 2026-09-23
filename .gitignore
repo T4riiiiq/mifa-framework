@@ -12,3 +12,7 @@ payloads/*
 .DS_Store
 .idea/
 .vscode/
+
+# Generated distribution / smoke-test artifacts
+dist/*
+!dist/.gitkeep

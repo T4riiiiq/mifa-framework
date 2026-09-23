@@ -1,0 +1,134 @@
+#include <windows.h>
+#include <tlhelp32.h>
+#include <algorithm>
+#include <cstdint>
+#include <cstring>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <string>
+#include <vector>
+
+static bool range_valid(std::size_t off, std::size_t len, std::size_t total) {
+    return off <= total && len <= (total - off);
+}
+
+static std::string section_name(const IMAGE_SECTION_HEADER& s) {
+    char name[IMAGE_SIZEOF_SHORT_NAME + 1] = {};
+    std::memcpy(name, s.Name, IMAGE_SIZEOF_SHORT_NAME);
+    return std::string(name);
+}
+
+int main(int argc, char* argv[]) {
+    if (argc != 3) {
+        std::cout << "Usage: win32-module-layout.exe <PID> <module name>\n";
+        return 1;
+    }
+
+    char* end = nullptr;
+    unsigned long parsed = std::strtoul(argv[1], &end, 10);
+    if (end == argv[1] || *end != '\0' || parsed == 0) {
+        std::cerr << "[!] Invalid PID\n";
+        return 1;
+    }
+    DWORD pid = static_cast<DWORD>(parsed);
+
+    HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, pid);
+    if (snap == INVALID_HANDLE_VALUE) {
+        std::cerr << "[!] Module snapshot failed: " << GetLastError() << "\n";
+        return 1;
+    }
+
+    MODULEENTRY32 me{};
+    me.dwSize = sizeof(me);
+    if (!Module32First(snap, &me)) {
+        std::cerr << "[!] Module32First failed: " << GetLastError() << "\n";
+        CloseHandle(snap);
+        return 1;
+    }
+
+    std::uintptr_t base = 0;
+    DWORD module_size = 0;
+    std::string path, found_name;
+    bool found = false;
+    do {
+        if (_stricmp(me.szModule, argv[2]) == 0) {
+            base = reinterpret_cast<std::uintptr_t>(me.modBaseAddr);
+            module_size = me.modBaseSize;
+            path = me.szExePath;
+            found_name = me.szModule;
+            found = true;
+            break;
+        }
+    } while (Module32Next(snap, &me));
+    CloseHandle(snap);
+
+    if (!found) {
+        std::cerr << "[!] Module not found\n";
+        return 1;
+    }
+
+    std::ifstream f(path, std::ios::binary);
+    if (!f) {
+        std::cerr << "[!] Unable to open module file\n";
+        return 1;
+    }
+    f.seekg(0, std::ios::end);
+    std::streamoff sz = f.tellg();
+    f.seekg(0, std::ios::beg);
+    if (sz <= 0) {
+        std::cerr << "[!] Empty module file\n";
+        return 1;
+    }
+    std::vector<unsigned char> data(static_cast<std::size_t>(sz));
+    if (!f.read(reinterpret_cast<char*>(data.data()), sz)) {
+        std::cerr << "[!] Unable to read module file\n";
+        return 1;
+    }
+
+    IMAGE_DOS_HEADER dos{};
+    if (!range_valid(0, sizeof(dos), data.size())) return 1;
+    std::memcpy(&dos, data.data(), sizeof(dos));
+    if (dos.e_magic != IMAGE_DOS_SIGNATURE || dos.e_lfanew <= 0) return 1;
+
+    std::size_t nt = static_cast<std::size_t>(dos.e_lfanew);
+    if (!range_valid(nt, sizeof(DWORD) + sizeof(IMAGE_FILE_HEADER), data.size())) return 1;
+    DWORD sig = 0;
+    std::memcpy(&sig, data.data() + nt, sizeof(sig));
+    if (sig != IMAGE_NT_SIGNATURE) return 1;
+
+    IMAGE_FILE_HEADER fh{};
+    std::size_t fh_off = nt + sizeof(DWORD);
+    std::memcpy(&fh, data.data() + fh_off, sizeof(fh));
+    std::size_t sec_off = fh_off + sizeof(IMAGE_FILE_HEADER) + fh.SizeOfOptionalHeader;
+    if (!range_valid(sec_off,
+                     static_cast<std::size_t>(fh.NumberOfSections) * sizeof(IMAGE_SECTION_HEADER),
+                     data.size())) return 1;
+
+    std::cout << "Mifa Win32 Module Layout\n"
+              << "Build: {{BUILD_ID}}\n"
+              << "Architecture: {{ARCH}}\n"
+              << "PID: " << pid << "\n"
+              << "Module: " << found_name << "\n"
+              << "Path: " << path << "\n"
+              << std::hex << std::uppercase
+              << "Loaded Base: 0x" << base << "\n"
+              << "Module Size: 0x" << module_size << "\n\n"
+              << "SECTION\tRVA\tRUNTIME START\tRUNTIME END\tCHAR\n";
+
+    for (WORD i = 0; i < fh.NumberOfSections; ++i) {
+        IMAGE_SECTION_HEADER s{};
+        std::memcpy(&s, data.data() + sec_off + static_cast<std::size_t>(i) * sizeof(s),
+                    sizeof(s));
+        DWORD span = std::max(s.Misc.VirtualSize, s.SizeOfRawData);
+        std::uintptr_t start = base + s.VirtualAddress;
+        std::uintptr_t end_addr = start + span;
+        std::cout << section_name(s)
+                  << "\t0x" << s.VirtualAddress
+                  << "\t0x" << start
+                  << "\t0x" << end_addr
+                  << "\t0x" << s.Characteristics << "\n";
+    }
+    std::cout << std::dec;
+    return 0;
+}

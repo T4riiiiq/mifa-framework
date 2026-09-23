@@ -1,0 +1,7 @@
+{
+  "id": "win32-pe-section-lookup-x86",
+  "name": "Win32 PE Section Lookup x86",
+  "method": "win32-pe-section-lookup",
+  "architecture": "x86",
+  "build_type": "release"
+}

@@ -1,0 +1,21 @@
+{
+  "id": "win32-pe-section-lookup",
+  "name": "Win32 PE Section Lookup",
+  "language": "cpp",
+  "description": "Finds a named PE section and displays its raw and virtual layout metadata.",
+  "architectures": [
+    "x64",
+    "x86"
+  ],
+  "requires_payload": false,
+  "payload_types": [],
+  "requires_target": false,
+  "sources": [
+    {
+      "template": "templates/main.cpp.tmpl",
+      "output": "main.cpp",
+      "compile": true
+    }
+  ],
+  "output_name": "win32-pe-section-lookup.exe"
+}

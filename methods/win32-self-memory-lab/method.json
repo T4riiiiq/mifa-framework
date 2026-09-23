@@ -1,0 +1,21 @@
+{
+  "id": "win32-self-memory-lab",
+  "name": "Win32 Self Memory Lab",
+  "language": "cpp",
+  "description": "Demonstrates benign in-process memory allocation and non-executable protection changes.",
+  "architectures": [
+    "x64",
+    "x86"
+  ],
+  "requires_payload": false,
+  "payload_types": [],
+  "requires_target": false,
+  "sources": [
+    {
+      "template": "templates/main.cpp.tmpl",
+      "output": "main.cpp",
+      "compile": true
+    }
+  ],
+  "output_name": "win32-self-memory-lab.exe"
+}

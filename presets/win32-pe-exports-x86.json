@@ -1,0 +1,7 @@
+{
+  "id": "win32-pe-exports-x86",
+  "name": "Win32 PE Exports x86",
+  "method": "win32-pe-exports",
+  "architecture": "x86",
+  "build_type": "release"
+}

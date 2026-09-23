@@ -1,0 +1,7 @@
+{
+  "id": "win32-pe-datadirs-x86",
+  "name": "Win32 PE Data Directories x86",
+  "method": "win32-pe-datadirs",
+  "architecture": "x86",
+  "build_type": "release"
+}

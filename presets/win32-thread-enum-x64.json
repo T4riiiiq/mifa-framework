@@ -1,0 +1,7 @@
+{
+  "id": "win32-thread-enum-x64",
+  "name": "Win32 Thread Enumeration x64",
+  "method": "win32-thread-enum",
+  "architecture": "x64",
+  "build_type": "release"
+}

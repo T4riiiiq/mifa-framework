@@ -1,0 +1,7 @@
+{
+  "id": "win32-pe-relocations-x64",
+  "name": "Win32 PE Base Relocations x64",
+  "method": "win32-pe-relocations",
+  "architecture": "x64",
+  "build_type": "release"
+}

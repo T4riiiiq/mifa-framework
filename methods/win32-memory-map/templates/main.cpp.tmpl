@@ -1,0 +1,104 @@
+#include <windows.h>
+#include <cstdint>
+#include <cstdlib>
+#include <iomanip>
+#include <iostream>
+#include <limits>
+#include <string>
+
+static const char* state_name(DWORD state) {
+    switch (state) {
+        case MEM_COMMIT: return "COMMIT";
+        case MEM_RESERVE: return "RESERVE";
+        case MEM_FREE: return "FREE";
+        default: return "UNKNOWN";
+    }
+}
+
+static const char* type_name(DWORD type) {
+    switch (type) {
+        case MEM_IMAGE: return "IMAGE";
+        case MEM_MAPPED: return "MAPPED";
+        case MEM_PRIVATE: return "PRIVATE";
+        default: return "-";
+    }
+}
+
+static std::string protect_name(DWORD protect) {
+    if (protect == 0) return "-";
+    DWORD base = protect & 0xFF;
+    std::string s;
+    switch (base) {
+        case PAGE_NOACCESS: s = "NOACCESS"; break;
+        case PAGE_READONLY: s = "R"; break;
+        case PAGE_READWRITE: s = "RW"; break;
+        case PAGE_WRITECOPY: s = "WC"; break;
+        case PAGE_EXECUTE: s = "X"; break;
+        case PAGE_EXECUTE_READ: s = "XR"; break;
+        case PAGE_EXECUTE_READWRITE: s = "XRW"; break;
+        case PAGE_EXECUTE_WRITECOPY: s = "XWC"; break;
+        default: s = "UNKNOWN"; break;
+    }
+    if (protect & PAGE_GUARD) s += "|GUARD";
+    if (protect & PAGE_NOCACHE) s += "|NOCACHE";
+    if (protect & PAGE_WRITECOMBINE) s += "|WRITECOMBINE";
+    return s;
+}
+
+int main(int argc, char* argv[]) {
+    if (argc != 2) {
+        std::cout << "Usage: win32-memory-map.exe <PID>\n";
+        return 1;
+    }
+
+    char* end = nullptr;
+    unsigned long parsed = std::strtoul(argv[1], &end, 10);
+    if (end == argv[1] || *end != '\0' || parsed == 0 ||
+        parsed > std::numeric_limits<DWORD>::max()) {
+        std::cerr << "[!] Invalid PID\n";
+        return 1;
+    }
+
+    DWORD pid = static_cast<DWORD>(parsed);
+    HANDLE process = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+    if (!process) {
+        std::cerr << "[!] OpenProcess failed: " << GetLastError() << "\n";
+        return 1;
+    }
+
+    SYSTEM_INFO si{};
+    GetSystemInfo(&si);
+    std::uintptr_t address = reinterpret_cast<std::uintptr_t>(si.lpMinimumApplicationAddress);
+    const std::uintptr_t max_address =
+        reinterpret_cast<std::uintptr_t>(si.lpMaximumApplicationAddress);
+
+    std::cout << "Mifa Win32 Memory Map\n"
+              << "Build: {{BUILD_ID}}\n"
+              << "Architecture: {{ARCH}}\n"
+              << "PID: " << pid << "\n\n"
+              << "BASE\tSIZE\tSTATE\tTYPE\tPROTECTION\n";
+
+    std::size_t count = 0;
+    while (address < max_address) {
+        MEMORY_BASIC_INFORMATION mbi{};
+        SIZE_T n = VirtualQueryEx(process, reinterpret_cast<LPCVOID>(address),
+                                  &mbi, sizeof(mbi));
+        if (n == 0) break;
+
+        std::uintptr_t base = reinterpret_cast<std::uintptr_t>(mbi.BaseAddress);
+        std::cout << "0x" << std::hex << std::uppercase << base
+                  << "\t0x" << mbi.RegionSize
+                  << std::dec << "\t" << state_name(mbi.State)
+                  << "\t" << type_name(mbi.Type)
+                  << "\t" << protect_name(mbi.Protect) << "\n";
+        ++count;
+
+        std::uintptr_t next = base + static_cast<std::uintptr_t>(mbi.RegionSize);
+        if (next <= address) break;
+        address = next;
+    }
+
+    CloseHandle(process);
+    std::cout << "\n[+] Regions enumerated: " << count << "\n";
+    return 0;
+}

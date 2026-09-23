@@ -1,0 +1,7 @@
+{
+  "id": "win32-memory-region-x64",
+  "name": "Win32 Memory Region x64",
+  "method": "win32-memory-region",
+  "architecture": "x64",
+  "build_type": "release"
+}

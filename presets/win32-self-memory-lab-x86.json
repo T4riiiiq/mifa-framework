@@ -1,0 +1,7 @@
+{
+  "id": "win32-self-memory-lab-x86",
+  "name": "Win32 Self Memory Lab x86",
+  "method": "win32-self-memory-lab",
+  "architecture": "x86",
+  "build_type": "release"
+}

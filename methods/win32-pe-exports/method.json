@@ -1,0 +1,21 @@
+{
+  "id": "win32-pe-exports",
+  "name": "Win32 PE Exports",
+  "language": "cpp",
+  "description": "Parses the export directory of a PE file and lists named exports.",
+  "architectures": [
+    "x64",
+    "x86"
+  ],
+  "requires_payload": false,
+  "payload_types": [],
+  "requires_target": false,
+  "sources": [
+    {
+      "template": "templates/main.cpp.tmpl",
+      "output": "main.cpp",
+      "compile": true
+    }
+  ],
+  "output_name": "win32-pe-exports.exe"
+}

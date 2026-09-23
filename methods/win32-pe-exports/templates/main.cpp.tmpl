@@ -1,0 +1,227 @@
+#include <windows.h>
+#include <algorithm>
+#include <cstdint>
+#include <cstring>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <string>
+#include <vector>
+
+
+static bool range_valid(std::size_t off, std::size_t len, std::size_t total) {
+    return off <= total && len <= (total - off);
+}
+
+struct PeView {
+    std::vector<unsigned char> data;
+    IMAGE_FILE_HEADER file_header{};
+    bool is64 = false;
+    std::uint64_t image_base = 0;
+    DWORD size_of_headers = 0;
+    IMAGE_DATA_DIRECTORY dirs[IMAGE_NUMBEROF_DIRECTORY_ENTRIES]{};
+    std::vector<IMAGE_SECTION_HEADER> sections;
+};
+
+static bool load_pe(const std::string& path, PeView& pe, std::string& err) {
+    std::ifstream f(path, std::ios::binary);
+    if (!f) { err = "Unable to open file"; return false; }
+    f.seekg(0, std::ios::end);
+    std::streamoff sz = f.tellg();
+    if (sz <= 0) { err = "Empty file"; return false; }
+    f.seekg(0, std::ios::beg);
+    pe = {};
+    pe.data.resize(static_cast<std::size_t>(sz));
+    if (!f.read(reinterpret_cast<char*>(pe.data.data()), sz)) {
+        err = "Unable to read file"; return false;
+    }
+    if (!range_valid(0, sizeof(IMAGE_DOS_HEADER), pe.data.size())) {
+        err = "Missing DOS header"; return false;
+    }
+
+    IMAGE_DOS_HEADER dos{};
+    std::memcpy(&dos, pe.data.data(), sizeof(dos));
+    if (dos.e_magic != IMAGE_DOS_SIGNATURE || dos.e_lfanew <= 0) {
+        err = "Invalid DOS header"; return false;
+    }
+
+    std::size_t nt = static_cast<std::size_t>(dos.e_lfanew);
+    if (!range_valid(nt, sizeof(DWORD) + sizeof(IMAGE_FILE_HEADER), pe.data.size())) {
+        err = "Invalid NT header"; return false;
+    }
+
+    DWORD sig = 0;
+    std::memcpy(&sig, pe.data.data() + nt, sizeof(sig));
+    if (sig != IMAGE_NT_SIGNATURE) {
+        err = "Invalid PE signature"; return false;
+    }
+
+    std::size_t fh_off = nt + sizeof(DWORD);
+    std::memcpy(&pe.file_header, pe.data.data() + fh_off, sizeof(pe.file_header));
+    std::size_t opt_off = fh_off + sizeof(IMAGE_FILE_HEADER);
+    if (!range_valid(opt_off, pe.file_header.SizeOfOptionalHeader, pe.data.size())) {
+        err = "Truncated optional header"; return false;
+    }
+
+    WORD magic = 0;
+    std::memcpy(&magic, pe.data.data() + opt_off, sizeof(magic));
+    if (magic == IMAGE_NT_OPTIONAL_HDR64_MAGIC) {
+        if (pe.file_header.SizeOfOptionalHeader < sizeof(IMAGE_OPTIONAL_HEADER64)) {
+            err = "Truncated PE32+ optional header"; return false;
+        }
+        IMAGE_OPTIONAL_HEADER64 opt{};
+        std::memcpy(&opt, pe.data.data() + opt_off, sizeof(opt));
+        pe.is64 = true;
+        pe.image_base = opt.ImageBase;
+        pe.size_of_headers = opt.SizeOfHeaders;
+        for (std::size_t i = 0; i < IMAGE_NUMBEROF_DIRECTORY_ENTRIES; ++i)
+            pe.dirs[i] = opt.DataDirectory[i];
+    } else if (magic == IMAGE_NT_OPTIONAL_HDR32_MAGIC) {
+        if (pe.file_header.SizeOfOptionalHeader < sizeof(IMAGE_OPTIONAL_HEADER32)) {
+            err = "Truncated PE32 optional header"; return false;
+        }
+        IMAGE_OPTIONAL_HEADER32 opt{};
+        std::memcpy(&opt, pe.data.data() + opt_off, sizeof(opt));
+        pe.is64 = false;
+        pe.image_base = opt.ImageBase;
+        pe.size_of_headers = opt.SizeOfHeaders;
+        for (std::size_t i = 0; i < IMAGE_NUMBEROF_DIRECTORY_ENTRIES; ++i)
+            pe.dirs[i] = opt.DataDirectory[i];
+    } else {
+        err = "Unsupported optional header"; return false;
+    }
+
+    std::size_t sec_off = opt_off + pe.file_header.SizeOfOptionalHeader;
+    std::size_t sec_sz = static_cast<std::size_t>(pe.file_header.NumberOfSections) *
+                         sizeof(IMAGE_SECTION_HEADER);
+    if (!range_valid(sec_off, sec_sz, pe.data.size())) {
+        err = "Truncated section table"; return false;
+    }
+
+    for (WORD i = 0; i < pe.file_header.NumberOfSections; ++i) {
+        IMAGE_SECTION_HEADER s{};
+        std::memcpy(&s,
+                    pe.data.data() + sec_off + static_cast<std::size_t>(i) * sizeof(s),
+                    sizeof(s));
+        pe.sections.push_back(s);
+    }
+    return true;
+}
+
+static bool rva_to_raw(const PeView& pe, DWORD rva, DWORD& raw) {
+    if (rva < pe.size_of_headers) {
+        if (rva < pe.data.size()) { raw = rva; return true; }
+        return false;
+    }
+    for (const auto& s : pe.sections) {
+        DWORD span = std::max(s.Misc.VirtualSize, s.SizeOfRawData);
+        std::uint64_t start = s.VirtualAddress;
+        std::uint64_t end = start + span;
+        if (rva >= start && static_cast<std::uint64_t>(rva) < end) {
+            DWORD delta = rva - s.VirtualAddress;
+            if (delta >= s.SizeOfRawData) return false;
+            std::uint64_t candidate = static_cast<std::uint64_t>(s.PointerToRawData) + delta;
+            if (candidate >= pe.data.size()) return false;
+            raw = static_cast<DWORD>(candidate);
+            return true;
+        }
+    }
+    return false;
+}
+
+static std::string read_cstr(const PeView& pe, DWORD raw) {
+    if (raw >= pe.data.size()) return {};
+    std::string s;
+    for (std::size_t i = raw; i < pe.data.size(); ++i) {
+        char c = static_cast<char>(pe.data[i]);
+        if (c == '\0') break;
+        s.push_back(c);
+        if (s.size() > 4096) break;
+    }
+    return s;
+}
+
+
+int main(int argc, char* argv[]) {
+    if (argc != 2) {
+        std::cout << "Usage: win32-pe-exports.exe <PE file>\n";
+        return 1;
+    }
+
+    PeView pe{};
+    std::string err;
+    if (!load_pe(argv[1], pe, err)) {
+        std::cerr << "[!] " << err << "\n";
+        return 1;
+    }
+
+    const auto& dir = pe.dirs[IMAGE_DIRECTORY_ENTRY_EXPORT];
+    if (dir.VirtualAddress == 0 || dir.Size == 0) {
+        std::cout << "No export directory\n";
+        return 0;
+    }
+
+    DWORD exp_raw = 0;
+    if (!rva_to_raw(pe, dir.VirtualAddress, exp_raw) ||
+        !range_valid(exp_raw, sizeof(IMAGE_EXPORT_DIRECTORY), pe.data.size())) {
+        std::cerr << "[!] Invalid export directory\n";
+        return 1;
+    }
+
+    IMAGE_EXPORT_DIRECTORY exp{};
+    std::memcpy(&exp, pe.data.data() + exp_raw, sizeof(exp));
+
+    DWORD funcs_raw = 0, names_raw = 0, ords_raw = 0;
+    if (!rva_to_raw(pe, exp.AddressOfFunctions, funcs_raw)) {
+        std::cerr << "[!] Invalid function table\n";
+        return 1;
+    }
+    if (exp.NumberOfNames > 0) {
+        if (!rva_to_raw(pe, exp.AddressOfNames, names_raw) ||
+            !rva_to_raw(pe, exp.AddressOfNameOrdinals, ords_raw)) {
+            std::cerr << "[!] Invalid export name tables\n";
+            return 1;
+        }
+    }
+
+    std::cout << "Mifa PE Exports\n"
+              << "Build: {{BUILD_ID}}\n"
+              << "Architecture: {{ARCH}}\n"
+              << "File: " << argv[1] << "\n\n"
+              << "ORDINAL\tRVA\tNAME\n";
+
+    std::size_t printed = 0;
+    for (DWORD i = 0; i < exp.NumberOfNames; ++i) {
+        std::size_t noff = static_cast<std::size_t>(names_raw) + i * sizeof(DWORD);
+        std::size_t ooff = static_cast<std::size_t>(ords_raw) + i * sizeof(WORD);
+        if (!range_valid(noff, sizeof(DWORD), pe.data.size()) ||
+            !range_valid(ooff, sizeof(WORD), pe.data.size())) break;
+
+        DWORD name_rva = 0;
+        WORD ord_index = 0;
+        std::memcpy(&name_rva, pe.data.data() + noff, sizeof(name_rva));
+        std::memcpy(&ord_index, pe.data.data() + ooff, sizeof(ord_index));
+
+        std::size_t foff = static_cast<std::size_t>(funcs_raw) +
+                           static_cast<std::size_t>(ord_index) * sizeof(DWORD);
+        if (!range_valid(foff, sizeof(DWORD), pe.data.size())) continue;
+
+        DWORD func_rva = 0;
+        std::memcpy(&func_rva, pe.data.data() + foff, sizeof(func_rva));
+
+        DWORD name_raw = 0;
+        std::string name = "<invalid>";
+        if (rva_to_raw(pe, name_rva, name_raw))
+            name = read_cstr(pe, name_raw);
+
+        DWORD ordinal = exp.Base + ord_index;
+        std::cout << ordinal << "\t0x"
+                  << std::hex << std::uppercase << func_rva
+                  << std::dec << "\t" << name << "\n";
+        ++printed;
+    }
+
+    std::cout << "\n[+] Named exports: " << printed
+              << " / Functions: " << exp.NumberOfFunctions << "\n";
+    return 0;
+}

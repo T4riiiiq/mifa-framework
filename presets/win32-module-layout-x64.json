@@ -1,0 +1,7 @@
+{
+  "id": "win32-module-layout-x64",
+  "name": "Win32 Module Runtime Layout x64",
+  "method": "win32-module-layout",
+  "architecture": "x64",
+  "build_type": "release"
+}

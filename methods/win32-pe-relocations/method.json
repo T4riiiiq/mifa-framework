@@ -1,0 +1,21 @@
+{
+  "id": "win32-pe-relocations",
+  "name": "Win32 PE Base Relocations",
+  "language": "cpp",
+  "description": "Parses PE base relocation blocks for ASLR and loader study.",
+  "architectures": [
+    "x64",
+    "x86"
+  ],
+  "requires_payload": false,
+  "payload_types": [],
+  "requires_target": false,
+  "sources": [
+    {
+      "template": "templates/main.cpp.tmpl",
+      "output": "main.cpp",
+      "compile": true
+    }
+  ],
+  "output_name": "win32-pe-relocations.exe"
+}

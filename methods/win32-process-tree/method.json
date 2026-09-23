@@ -1,0 +1,21 @@
+{
+  "id": "win32-process-tree",
+  "name": "Win32 Process Tree",
+  "language": "cpp",
+  "description": "Builds a process ancestry/descendant view from a Toolhelp process snapshot.",
+  "architectures": [
+    "x64",
+    "x86"
+  ],
+  "requires_payload": false,
+  "payload_types": [],
+  "requires_target": false,
+  "sources": [
+    {
+      "template": "templates/main.cpp.tmpl",
+      "output": "main.cpp",
+      "compile": true
+    }
+  ],
+  "output_name": "win32-process-tree.exe"
+}

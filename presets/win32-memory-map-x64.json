@@ -1,0 +1,7 @@
+{
+  "id": "win32-memory-map-x64",
+  "name": "Win32 Memory Map x64",
+  "method": "win32-memory-map",
+  "architecture": "x64",
+  "build_type": "release"
+}

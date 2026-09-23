@@ -1,0 +1,182 @@
+#include <windows.h>
+
+#include <cstdint>
+#include <cstring>
+#include <iomanip>
+#include <iostream>
+#include <string>
+
+
+static void show_region(
+    const char* label,
+    void* address
+)
+{
+    MEMORY_BASIC_INFORMATION mbi{};
+
+    SIZE_T result =
+        VirtualQuery(
+            address,
+            &mbi,
+            sizeof(mbi)
+        );
+
+
+    if (result == 0)
+    {
+        std::cout
+            << label
+            << ": VirtualQuery failed: "
+            << GetLastError()
+            << std::endl;
+
+        return;
+    }
+
+
+    std::cout
+        << label
+        << std::endl;
+
+    std::cout
+        << "  Base: 0x"
+        << std::hex
+        << std::uppercase
+        << reinterpret_cast<std::uintptr_t>(
+            mbi.BaseAddress
+        )
+        << std::endl;
+
+    std::cout
+        << "  Size: 0x"
+        << mbi.RegionSize
+        << std::endl;
+
+    std::cout
+        << "  Protect: 0x"
+        << mbi.Protect
+        << std::dec
+        << std::endl;
+}
+
+
+int main()
+{
+    constexpr SIZE_T buffer_size =
+        4096;
+
+
+    void* buffer =
+        VirtualAlloc(
+            nullptr,
+            buffer_size,
+            MEM_RESERVE | MEM_COMMIT,
+            PAGE_READWRITE
+        );
+
+
+    if (buffer == nullptr)
+    {
+        std::cerr
+            << "[!] VirtualAlloc failed: "
+            << GetLastError()
+            << std::endl;
+
+        return 1;
+    }
+
+
+    const char message[] =
+        "Mifa self-memory lab: benign buffer";
+
+
+    std::memcpy(
+        buffer,
+        message,
+        sizeof(message)
+    );
+
+
+    std::cout
+        << "Mifa Win32 Self Memory Lab"
+        << std::endl;
+
+    std::cout
+        << "Build: {{BUILD_ID}}"
+        << std::endl;
+
+    std::cout
+        << "Architecture: {{ARCH}}"
+        << std::endl;
+
+    std::cout
+        << std::endl;
+
+
+    show_region(
+        "After allocation (RW)",
+        buffer
+    );
+
+
+    DWORD old_protect = 0;
+
+
+    if (!VirtualProtect(
+        buffer,
+        buffer_size,
+        PAGE_READONLY,
+        &old_protect
+    ))
+    {
+        std::cerr
+            << "[!] VirtualProtect failed: "
+            << GetLastError()
+            << std::endl;
+
+        VirtualFree(
+            buffer,
+            0,
+            MEM_RELEASE
+        );
+
+        return 1;
+    }
+
+
+    show_region(
+        "After protection change (R)",
+        buffer
+    );
+
+
+    std::cout
+        << "Buffer text: "
+        << static_cast<const char*>(
+            buffer
+        )
+        << std::endl;
+
+
+    if (!VirtualFree(
+        buffer,
+        0,
+        MEM_RELEASE
+    ))
+    {
+        std::cerr
+            << "[!] VirtualFree failed: "
+            << GetLastError()
+            << std::endl;
+
+        return 1;
+    }
+
+
+    std::cout
+        << "[+] Buffer released"
+        << std::endl;
+
+
+    return 0;
+}

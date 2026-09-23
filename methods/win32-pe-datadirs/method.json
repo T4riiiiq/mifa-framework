@@ -1,0 +1,21 @@
+{
+  "id": "win32-pe-datadirs",
+  "name": "Win32 PE Data Directories",
+  "language": "cpp",
+  "description": "Displays PE optional-header data directories and their RVA/size values.",
+  "architectures": [
+    "x64",
+    "x86"
+  ],
+  "requires_payload": false,
+  "payload_types": [],
+  "requires_target": false,
+  "sources": [
+    {
+      "template": "templates/main.cpp.tmpl",
+      "output": "main.cpp",
+      "compile": true
+    }
+  ],
+  "output_name": "win32-pe-datadirs.exe"
+}

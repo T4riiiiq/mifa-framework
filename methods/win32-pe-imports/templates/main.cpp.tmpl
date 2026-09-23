@@ -1,0 +1,239 @@
+#include <windows.h>
+#include <algorithm>
+#include <cstdint>
+#include <cstring>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <string>
+#include <vector>
+
+
+static bool range_valid(std::size_t off, std::size_t len, std::size_t total) {
+    return off <= total && len <= (total - off);
+}
+
+struct PeView {
+    std::vector<unsigned char> data;
+    IMAGE_FILE_HEADER file_header{};
+    bool is64 = false;
+    std::uint64_t image_base = 0;
+    DWORD size_of_headers = 0;
+    IMAGE_DATA_DIRECTORY dirs[IMAGE_NUMBEROF_DIRECTORY_ENTRIES]{};
+    std::vector<IMAGE_SECTION_HEADER> sections;
+};
+
+static bool load_pe(const std::string& path, PeView& pe, std::string& err) {
+    std::ifstream f(path, std::ios::binary);
+    if (!f) { err = "Unable to open file"; return false; }
+    f.seekg(0, std::ios::end);
+    std::streamoff sz = f.tellg();
+    if (sz <= 0) { err = "Empty file"; return false; }
+    f.seekg(0, std::ios::beg);
+    pe = {};
+    pe.data.resize(static_cast<std::size_t>(sz));
+    if (!f.read(reinterpret_cast<char*>(pe.data.data()), sz)) {
+        err = "Unable to read file"; return false;
+    }
+    if (!range_valid(0, sizeof(IMAGE_DOS_HEADER), pe.data.size())) {
+        err = "Missing DOS header"; return false;
+    }
+
+    IMAGE_DOS_HEADER dos{};
+    std::memcpy(&dos, pe.data.data(), sizeof(dos));
+    if (dos.e_magic != IMAGE_DOS_SIGNATURE || dos.e_lfanew <= 0) {
+        err = "Invalid DOS header"; return false;
+    }
+
+    std::size_t nt = static_cast<std::size_t>(dos.e_lfanew);
+    if (!range_valid(nt, sizeof(DWORD) + sizeof(IMAGE_FILE_HEADER), pe.data.size())) {
+        err = "Invalid NT header"; return false;
+    }
+
+    DWORD sig = 0;
+    std::memcpy(&sig, pe.data.data() + nt, sizeof(sig));
+    if (sig != IMAGE_NT_SIGNATURE) {
+        err = "Invalid PE signature"; return false;
+    }
+
+    std::size_t fh_off = nt + sizeof(DWORD);
+    std::memcpy(&pe.file_header, pe.data.data() + fh_off, sizeof(pe.file_header));
+    std::size_t opt_off = fh_off + sizeof(IMAGE_FILE_HEADER);
+    if (!range_valid(opt_off, pe.file_header.SizeOfOptionalHeader, pe.data.size())) {
+        err = "Truncated optional header"; return false;
+    }
+
+    WORD magic = 0;
+    std::memcpy(&magic, pe.data.data() + opt_off, sizeof(magic));
+    if (magic == IMAGE_NT_OPTIONAL_HDR64_MAGIC) {
+        if (pe.file_header.SizeOfOptionalHeader < sizeof(IMAGE_OPTIONAL_HEADER64)) {
+            err = "Truncated PE32+ optional header"; return false;
+        }
+        IMAGE_OPTIONAL_HEADER64 opt{};
+        std::memcpy(&opt, pe.data.data() + opt_off, sizeof(opt));
+        pe.is64 = true;
+        pe.image_base = opt.ImageBase;
+        pe.size_of_headers = opt.SizeOfHeaders;
+        for (std::size_t i = 0; i < IMAGE_NUMBEROF_DIRECTORY_ENTRIES; ++i)
+            pe.dirs[i] = opt.DataDirectory[i];
+    } else if (magic == IMAGE_NT_OPTIONAL_HDR32_MAGIC) {
+        if (pe.file_header.SizeOfOptionalHeader < sizeof(IMAGE_OPTIONAL_HEADER32)) {
+            err = "Truncated PE32 optional header"; return false;
+        }
+        IMAGE_OPTIONAL_HEADER32 opt{};
+        std::memcpy(&opt, pe.data.data() + opt_off, sizeof(opt));
+        pe.is64 = false;
+        pe.image_base = opt.ImageBase;
+        pe.size_of_headers = opt.SizeOfHeaders;
+        for (std::size_t i = 0; i < IMAGE_NUMBEROF_DIRECTORY_ENTRIES; ++i)
+            pe.dirs[i] = opt.DataDirectory[i];
+    } else {
+        err = "Unsupported optional header"; return false;
+    }
+
+    std::size_t sec_off = opt_off + pe.file_header.SizeOfOptionalHeader;
+    std::size_t sec_sz = static_cast<std::size_t>(pe.file_header.NumberOfSections) *
+                         sizeof(IMAGE_SECTION_HEADER);
+    if (!range_valid(sec_off, sec_sz, pe.data.size())) {
+        err = "Truncated section table"; return false;
+    }
+
+    for (WORD i = 0; i < pe.file_header.NumberOfSections; ++i) {
+        IMAGE_SECTION_HEADER s{};
+        std::memcpy(&s,
+                    pe.data.data() + sec_off + static_cast<std::size_t>(i) * sizeof(s),
+                    sizeof(s));
+        pe.sections.push_back(s);
+    }
+    return true;
+}
+
+static bool rva_to_raw(const PeView& pe, DWORD rva, DWORD& raw) {
+    if (rva < pe.size_of_headers) {
+        if (rva < pe.data.size()) { raw = rva; return true; }
+        return false;
+    }
+    for (const auto& s : pe.sections) {
+        DWORD span = std::max(s.Misc.VirtualSize, s.SizeOfRawData);
+        std::uint64_t start = s.VirtualAddress;
+        std::uint64_t end = start + span;
+        if (rva >= start && static_cast<std::uint64_t>(rva) < end) {
+            DWORD delta = rva - s.VirtualAddress;
+            if (delta >= s.SizeOfRawData) return false;
+            std::uint64_t candidate = static_cast<std::uint64_t>(s.PointerToRawData) + delta;
+            if (candidate >= pe.data.size()) return false;
+            raw = static_cast<DWORD>(candidate);
+            return true;
+        }
+    }
+    return false;
+}
+
+static std::string read_cstr(const PeView& pe, DWORD raw) {
+    if (raw >= pe.data.size()) return {};
+    std::string s;
+    for (std::size_t i = raw; i < pe.data.size(); ++i) {
+        char c = static_cast<char>(pe.data[i]);
+        if (c == '\0') break;
+        s.push_back(c);
+        if (s.size() > 4096) break;
+    }
+    return s;
+}
+
+
+int main(int argc, char* argv[]) {
+    if (argc != 2) {
+        std::cout << "Usage: win32-pe-imports.exe <PE file>\n";
+        return 1;
+    }
+
+    PeView pe{};
+    std::string err;
+    if (!load_pe(argv[1], pe, err)) {
+        std::cerr << "[!] " << err << "\n";
+        return 1;
+    }
+
+    const auto& dir = pe.dirs[IMAGE_DIRECTORY_ENTRY_IMPORT];
+    if (dir.VirtualAddress == 0 || dir.Size == 0) {
+        std::cout << "No import directory\n";
+        return 0;
+    }
+
+    DWORD desc_raw = 0;
+    if (!rva_to_raw(pe, dir.VirtualAddress, desc_raw)) {
+        std::cerr << "[!] Import directory is not file-backed\n";
+        return 1;
+    }
+
+    std::cout << "Mifa PE Imports\n"
+              << "Build: {{BUILD_ID}}\n"
+              << "Architecture: {{ARCH}}\n"
+              << "File: " << argv[1] << "\n\n";
+
+    std::size_t dll_count = 0, import_count = 0;
+    for (std::size_t index = 0;; ++index) {
+        std::size_t off = static_cast<std::size_t>(desc_raw) +
+                          index * sizeof(IMAGE_IMPORT_DESCRIPTOR);
+        if (!range_valid(off, sizeof(IMAGE_IMPORT_DESCRIPTOR), pe.data.size()))
+            break;
+
+        IMAGE_IMPORT_DESCRIPTOR desc{};
+        std::memcpy(&desc, pe.data.data() + off, sizeof(desc));
+        if (desc.Name == 0 && desc.FirstThunk == 0 && desc.OriginalFirstThunk == 0)
+            break;
+
+        DWORD name_raw = 0;
+        if (!rva_to_raw(pe, desc.Name, name_raw)) break;
+        std::string dll = read_cstr(pe, name_raw);
+        std::cout << "[" << dll << "]\n";
+        ++dll_count;
+
+        DWORD thunk_rva = desc.OriginalFirstThunk ? desc.OriginalFirstThunk : desc.FirstThunk;
+        DWORD thunk_raw = 0;
+        if (!rva_to_raw(pe, thunk_rva, thunk_raw)) {
+            std::cout << "  <thunk not file-backed>\n";
+            continue;
+        }
+
+        std::size_t step = pe.is64 ? sizeof(std::uint64_t) : sizeof(std::uint32_t);
+        for (std::size_t ti = 0;; ++ti) {
+            std::size_t toff = static_cast<std::size_t>(thunk_raw) + ti * step;
+            if (!range_valid(toff, step, pe.data.size())) break;
+
+            std::uint64_t value = 0;
+            if (pe.is64) {
+                std::memcpy(&value, pe.data.data() + toff, sizeof(std::uint64_t));
+            } else {
+                std::uint32_t v32 = 0;
+                std::memcpy(&v32, pe.data.data() + toff, sizeof(v32));
+                value = v32;
+            }
+            if (value == 0) break;
+
+            bool ordinal = pe.is64
+                ? ((value & IMAGE_ORDINAL_FLAG64) != 0)
+                : ((value & IMAGE_ORDINAL_FLAG32) != 0);
+
+            if (ordinal) {
+                std::cout << "  ordinal #" << (value & 0xFFFF) << "\n";
+            } else {
+                DWORD ibn_raw = 0;
+                if (rva_to_raw(pe, static_cast<DWORD>(value), ibn_raw) &&
+                    range_valid(ibn_raw, sizeof(WORD), pe.data.size())) {
+                    std::string name = read_cstr(pe, ibn_raw + sizeof(WORD));
+                    std::cout << "  " << name << "\n";
+                } else {
+                    std::cout << "  <invalid import name>\n";
+                }
+            }
+            ++import_count;
+        }
+        std::cout << "\n";
+    }
+
+    std::cout << "[+] DLLs: " << dll_count
+              << "  Imports: " << import_count << "\n";
+    return 0;
+}

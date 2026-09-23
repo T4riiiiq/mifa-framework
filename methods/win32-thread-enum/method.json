@@ -1,0 +1,21 @@
+{
+  "id": "win32-thread-enum",
+  "name": "Win32 Thread Enumeration",
+  "language": "cpp",
+  "description": "Enumerates threads belonging to a target process using Toolhelp snapshots.",
+  "architectures": [
+    "x64",
+    "x86"
+  ],
+  "requires_payload": false,
+  "payload_types": [],
+  "requires_target": false,
+  "sources": [
+    {
+      "template": "templates/main.cpp.tmpl",
+      "output": "main.cpp",
+      "compile": true
+    }
+  ],
+  "output_name": "win32-thread-enum.exe"
+}

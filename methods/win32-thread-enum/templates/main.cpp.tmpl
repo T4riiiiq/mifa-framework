@@ -1,0 +1,55 @@
+#include <windows.h>
+#include <tlhelp32.h>
+#include <cstdlib>
+#include <iostream>
+#include <limits>
+
+int main(int argc, char* argv[]) {
+    if (argc != 2) {
+        std::cout << "Usage: win32-thread-enum.exe <PID>\n";
+        return 1;
+    }
+
+    char* end = nullptr;
+    unsigned long parsed = std::strtoul(argv[1], &end, 10);
+    if (end == argv[1] || *end != '\0' || parsed == 0 ||
+        parsed > std::numeric_limits<DWORD>::max()) {
+        std::cerr << "[!] Invalid PID\n";
+        return 1;
+    }
+
+    DWORD pid = static_cast<DWORD>(parsed);
+    HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+    if (snapshot == INVALID_HANDLE_VALUE) {
+        std::cerr << "[!] CreateToolhelp32Snapshot failed: "
+                  << GetLastError() << "\n";
+        return 1;
+    }
+
+    THREADENTRY32 entry{};
+    entry.dwSize = sizeof(entry);
+    if (!Thread32First(snapshot, &entry)) {
+        std::cerr << "[!] Thread32First failed: " << GetLastError() << "\n";
+        CloseHandle(snapshot);
+        return 1;
+    }
+
+    std::cout << "Mifa Win32 Thread Enumeration\n"
+              << "Build: {{BUILD_ID}}\n"
+              << "Architecture: {{ARCH}}\n"
+              << "PID: " << pid << "\n\n"
+              << "TID\tOWNER PID\n";
+
+    std::size_t count = 0;
+    do {
+        if (entry.th32OwnerProcessID == pid) {
+            std::cout << entry.th32ThreadID << "\t"
+                      << entry.th32OwnerProcessID << "\n";
+            ++count;
+        }
+    } while (Thread32Next(snapshot, &entry));
+
+    CloseHandle(snapshot);
+    std::cout << "\n[+] Threads enumerated: " << count << "\n";
+    return 0;
+}

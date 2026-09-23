@@ -1,0 +1,7 @@
+{
+  "id": "win32-pe-bytes-x86",
+  "name": "Win32 PE Bytes x86",
+  "method": "win32-pe-bytes",
+  "architecture": "x86",
+  "build_type": "release"
+}

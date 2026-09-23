@@ -1,0 +1,88 @@
+#include <windows.h>
+#include <cstdint>
+#include <cstdlib>
+#include <iomanip>
+#include <iostream>
+#include <limits>
+#include <string>
+
+static const char* state_name(DWORD state) {
+    switch (state) {
+        case MEM_COMMIT: return "COMMIT";
+        case MEM_RESERVE: return "RESERVE";
+        case MEM_FREE: return "FREE";
+        default: return "UNKNOWN";
+    }
+}
+
+static const char* type_name(DWORD type) {
+    switch (type) {
+        case MEM_IMAGE: return "IMAGE";
+        case MEM_MAPPED: return "MAPPED";
+        case MEM_PRIVATE: return "PRIVATE";
+        default: return "-";
+    }
+}
+
+int main(int argc, char* argv[]) {
+    if (argc != 3) {
+        std::cout << "Usage: win32-memory-region.exe <PID> <address>\n"
+                  << "Example: win32-memory-region.exe 3988 0x7FF600001000\n";
+        return 1;
+    }
+
+    char* pid_end = nullptr;
+    unsigned long parsed_pid = std::strtoul(argv[1], &pid_end, 10);
+    if (pid_end == argv[1] || *pid_end != '\0' || parsed_pid == 0 ||
+        parsed_pid > std::numeric_limits<DWORD>::max()) {
+        std::cerr << "[!] Invalid PID\n";
+        return 1;
+    }
+
+    char* addr_end = nullptr;
+    unsigned long long parsed_addr = std::strtoull(argv[2], &addr_end, 0);
+    if (addr_end == argv[2] || *addr_end != '\0') {
+        std::cerr << "[!] Invalid address\n";
+        return 1;
+    }
+
+    HANDLE process = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE,
+                                 static_cast<DWORD>(parsed_pid));
+    if (!process) {
+        std::cerr << "[!] OpenProcess failed: " << GetLastError() << "\n";
+        return 1;
+    }
+
+    MEMORY_BASIC_INFORMATION mbi{};
+    SIZE_T n = VirtualQueryEx(
+        process,
+        reinterpret_cast<LPCVOID>(static_cast<std::uintptr_t>(parsed_addr)),
+        &mbi,
+        sizeof(mbi)
+    );
+
+    if (n == 0) {
+        std::cerr << "[!] VirtualQueryEx failed: " << GetLastError() << "\n";
+        CloseHandle(process);
+        return 1;
+    }
+
+    std::cout << "Mifa Win32 Memory Region\n"
+              << "Build: {{BUILD_ID}}\n"
+              << "Architecture: {{ARCH}}\n\n"
+              << std::hex << std::uppercase
+              << "Query Address:   0x" << parsed_addr << "\n"
+              << "Base Address:    0x"
+              << reinterpret_cast<std::uintptr_t>(mbi.BaseAddress) << "\n"
+              << "Allocation Base: 0x"
+              << reinterpret_cast<std::uintptr_t>(mbi.AllocationBase) << "\n"
+              << "Region Size:     0x" << mbi.RegionSize << "\n"
+              << "Protect:         0x" << mbi.Protect << "\n"
+              << "Alloc Protect:   0x" << mbi.AllocationProtect << "\n"
+              << std::dec
+              << "State:           " << state_name(mbi.State) << "\n"
+              << "Type:            " << type_name(mbi.Type) << "\n";
+
+    CloseHandle(process);
+    return 0;
+}

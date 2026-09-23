@@ -1,0 +1,21 @@
+{
+  "id": "win32-pe-bytes",
+  "name": "Win32 PE Bytes",
+  "language": "cpp",
+  "description": "Reads a bounded byte range from a PE file by RVA after RVA-to-file translation.",
+  "architectures": [
+    "x64",
+    "x86"
+  ],
+  "requires_payload": false,
+  "payload_types": [],
+  "requires_target": false,
+  "sources": [
+    {
+      "template": "templates/main.cpp.tmpl",
+      "output": "main.cpp",
+      "compile": true
+    }
+  ],
+  "output_name": "win32-pe-bytes.exe"
+}
