@@ -20,11 +20,11 @@ Status values:
 
 | Capability | Mifa Mapping | Status |
 |---|---|---|
-| JScript execution | `jscript` | Candidate Technique |
-| Managed assembly hosting | `managed` | Candidate Technique |
+| JScript compatibility inspection | `jscript` | Implemented |
+| Managed PE / CLR compatibility inspection | `managed` | Implemented |
 | Win32 API access from managed code | Existing Win32 foundations | Foundation Exists |
-| Managed payload runner | `managed` | Candidate Technique |
-| Script-host integration | `jscript` | Helper |
+| Managed image inspection | `managed` | Implemented |
+| Script-host compatibility | `jscript` | Implemented |
 | Reflective managed loading concepts | `reflect` | Inspect Only |
 
 ---
@@ -33,10 +33,10 @@ Status values:
 
 | Capability | Mifa Mapping | Status |
 |---|---|---|
-| Process injection family | `inject` | Candidate Technique |
-| DLL injection family | `dll` | Candidate Technique |
-| Reflective PE / DLL loading | `reflect` | Candidate Technique |
-| Process hollowing | `hollow` | Candidate Technique |
+| Process injection compatibility | `inject` | Implemented |
+| DLL injection compatibility | `dll` | Implemented |
+| Reflective PE / DLL mapping compatibility | `reflect` | Implemented |
+| Process hollowing compatibility | `hollow` | Implemented |
 | Process enumeration | `win32-process-enum` | Implemented |
 | Thread enumeration | `win32-thread-enum` | Implemented |
 | Module enumeration | `win32-module-enum` | Implemented |
@@ -51,9 +51,9 @@ Status values:
 
 | Capability | Mifa Mapping | Status |
 |---|---|---|
-| Native Windows execution foundation | `native` | Foundation Exists |
+| Native Windows execution foundation | `native` | Implemented |
 | Native C / C++ Win32 foundations | Existing methods | Implemented |
-| Managed execution path | `managed` | Candidate Technique |
+| Managed PE compatibility path | `managed` | Implemented |
 | Local thread lifecycle | `win32-local-thread` | Implemented |
 | Local buffer lifecycle | `win32-local-buffer` | Implemented |
 | Runtime helper support | `win32-runtime-helper` | Implemented |
@@ -81,9 +81,9 @@ Status values:
 |---|---|---|
 | File and payload inspection | Existing payload / PE methods | Foundation Exists |
 | Payload transformation | Payload Contract v2 | Implemented |
-| Managed execution constraints | `managed` | Candidate Technique |
+| Managed execution constraints | `managed` | Implemented |
 | AMSI compatibility information | `amsi` | Inspect Only |
-| Script-host compatibility | `jscript` | Helper |
+| Script-host compatibility | `jscript` | Implemented |
 | Application-control compatibility | `appcontrol` | Inspect Only |
 | Trusted execution hosts | `trusted` | Helper |
 
@@ -140,7 +140,7 @@ The following areas remain outside the current scope:
 
 # Planned Technique Set
 
-First-class candidates:
+First-class techniques:
 
 1. `inject`
 2. `dll`
@@ -158,4 +158,4 @@ Supporting capabilities:
 11. `runner`
 12. `kernel`
 
-This set should be finalized before implementation begins.
+The first-class technique layer is implemented at the current compatibility and inspection scope.
