@@ -29,7 +29,7 @@
     "quick": false,
     "runtime": "native",
     "privilege": "user",
-    "validation": "planned"
+    "validation": "build-tested"
   },
   "sources": [
     {

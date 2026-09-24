@@ -45,14 +45,23 @@ SMOKE_METHODS = [
     "win32-hex-buffer",
     "win32-pe-runtime-info",
     "win32-pe-section-characteristics",
+    "win32-reflective-map-lab",
+    "win32-managed-lab",
+    "win32-jscript-lab",
+    "win32-amsi-inspect",
+    "win32-appcontrol-inspect",
+    "win32-trusted-hosts",
+    "win32-runner-helper",
+    "kernel-security",
 ]
 
+
 SMOKE_PAYLOAD = (
-    b"Mifa v1.2 smoke payload fixture\n"
+    b"Mifa v2.0 smoke payload fixture\n"
 )
 
 RUNTIME_TEXT = (
-    b"Mifa v1.2 runtime smoke test"
+    b"Mifa v2.0 runtime smoke test"
 )
 
 
@@ -164,6 +173,11 @@ def write_runtime_assets(
         / "smoke-test.hex"
     )
 
+    js_path = (
+        output_dir
+        / "smoke-test.js"
+    )
+
     text_path.write_bytes(
         RUNTIME_TEXT
     )
@@ -180,10 +194,16 @@ def write_runtime_assets(
         )
     )
 
+    js_path.write_text(
+        'var mifaSmoke = "v2";\n',
+        encoding="utf-8",
+    )
+
     return [
         text_path,
         b64_path,
         hex_path,
+        js_path,
     ]
 
 
@@ -198,55 +218,87 @@ Set-Location $PSScriptRoot
 $tests = @(
     @{
         Name = "parameter-test"
-        Command = { .\parameter-test.exe smoke-test }
+        Command = { .\\parameter-test.exe smoke-test }
     },
     @{
         Name = "win32-api-resolve"
-        Command = { .\win32-api-resolve.exe kernel32.dll GetCurrentProcessId }
+        Command = { .\\win32-api-resolve.exe kernel32.dll GetCurrentProcessId }
     },
     @{
         Name = "win32-local-buffer"
-        Command = { .\win32-local-buffer.exe }
+        Command = { .\\win32-local-buffer.exe }
     },
     @{
         Name = "win32-local-thread"
-        Command = { .\win32-local-thread.exe }
+        Command = { .\\win32-local-thread.exe }
     },
     @{
         Name = "win32-dll-load-info"
-        Command = { .\win32-dll-load-info.exe C:\Windows\System32\version.dll }
+        Command = { .\\win32-dll-load-info.exe C:\\Windows\\System32\\version.dll }
     },
     @{
         Name = "win32-file-map"
-        Command = { .\win32-file-map.exe C:\Windows\System32\notepad.exe }
+        Command = { .\\win32-file-map.exe C:\\Windows\\System32\\notepad.exe }
     },
     @{
         Name = "win32-runtime-helper"
-        Command = { .\win32-runtime-helper.exe smoke-test }
+        Command = { .\\win32-runtime-helper.exe smoke-test }
     },
     @{
         Name = "win32-payload-inspect"
-        Command = { .\win32-payload-inspect.exe }
+        Command = { .\\win32-payload-inspect.exe }
     },
     @{
         Name = "win32-file-buffer"
-        Command = { .\win32-file-buffer.exe .\smoke-test.txt }
+        Command = { .\\win32-file-buffer.exe .\\smoke-test.txt }
     },
     @{
         Name = "win32-base64-buffer"
-        Command = { .\win32-base64-buffer.exe .\smoke-test.b64 }
+        Command = { .\\win32-base64-buffer.exe .\\smoke-test.b64 }
     },
     @{
         Name = "win32-hex-buffer"
-        Command = { .\win32-hex-buffer.exe .\smoke-test.hex }
+        Command = { .\\win32-hex-buffer.exe .\\smoke-test.hex }
     },
     @{
         Name = "win32-pe-runtime-info"
-        Command = { .\win32-pe-runtime-info.exe C:\Windows\System32\notepad.exe }
+        Command = { .\\win32-pe-runtime-info.exe C:\\Windows\\System32\\notepad.exe }
     },
     @{
         Name = "win32-pe-section-characteristics"
-        Command = { .\win32-pe-section-characteristics.exe C:\Windows\System32\notepad.exe }
+        Command = { .\\win32-pe-section-characteristics.exe C:\\Windows\\System32\\notepad.exe }
+    },
+    @{
+        Name = "win32-reflective-map-lab"
+        Command = { .\\win32-reflective-map-lab.exe C:\\Windows\\System32\\notepad.exe }
+    },
+    @{
+        Name = "win32-managed-lab"
+        Command = { .\\win32-managed-lab.exe C:\\Windows\\System32\\notepad.exe }
+    },
+    @{
+        Name = "win32-jscript-lab"
+        Command = { .\\win32-jscript-lab.exe .\\smoke-test.js }
+    },
+    @{
+        Name = "win32-amsi-inspect"
+        Command = { .\\win32-amsi-inspect.exe }
+    },
+    @{
+        Name = "win32-appcontrol-inspect"
+        Command = { .\\win32-appcontrol-inspect.exe }
+    },
+    @{
+        Name = "win32-trusted-hosts"
+        Command = { .\\win32-trusted-hosts.exe }
+    },
+    @{
+        Name = "win32-runner-helper"
+        Command = { .\\win32-runner-helper.exe .\\smoke-test.txt }
+    },
+    @{
+        Name = "kernel-security"
+        Command = { .\\kernel-security.exe }
     }
 )
 
@@ -285,7 +337,7 @@ exit 0
 def main():
     parser = argparse.ArgumentParser(
         description=(
-            "Build the curated Mifa v1.2 "
+            "Build the curated Mifa v2.0 "
             "Windows smoke-test bundle."
         )
     )

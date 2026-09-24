@@ -22,7 +22,7 @@
     "quick": false,
     "runtime": "kernel",
     "privilege": "user",
-    "validation": "planned"
+    "validation": "build-tested"
   },
   "sources": [
     {
