@@ -1,0 +1,228 @@
+#include <windows.h>
+
+#include <cstdint>
+#include <cstdlib>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+
+
+static const char* machine_name(WORD machine)
+{
+    switch (machine)
+    {
+        case IMAGE_FILE_MACHINE_I386:
+            return "x86";
+
+        case IMAGE_FILE_MACHINE_AMD64:
+            return "x64";
+
+        case IMAGE_FILE_MACHINE_ARM64:
+            return "arm64";
+
+        default:
+            return "unknown";
+    }
+}
+
+
+static bool read_dll_machine(
+    const char* path,
+    WORD& machine
+)
+{
+    std::ifstream file(
+        path,
+        std::ios::binary
+    );
+
+    if (!file)
+    {
+        return false;
+    }
+
+    IMAGE_DOS_HEADER dos = {};
+
+    file.read(
+        reinterpret_cast<char*>(&dos),
+        sizeof(dos)
+    );
+
+    if (
+        !file
+        || dos.e_magic != IMAGE_DOS_SIGNATURE
+    )
+    {
+        return false;
+    }
+
+    file.seekg(
+        dos.e_lfanew,
+        std::ios::beg
+    );
+
+    DWORD signature = 0;
+
+    file.read(
+        reinterpret_cast<char*>(&signature),
+        sizeof(signature)
+    );
+
+    if (
+        !file
+        || signature != IMAGE_NT_SIGNATURE
+    )
+    {
+        return false;
+    }
+
+    IMAGE_FILE_HEADER header = {};
+
+    file.read(
+        reinterpret_cast<char*>(&header),
+        sizeof(header)
+    );
+
+    if (!file)
+    {
+        return false;
+    }
+
+    machine = header.Machine;
+
+    return true;
+}
+
+
+int main(
+    int argc,
+    char** argv
+)
+{
+    std::cout
+        << "Mifa DLL Compatibility Lab\n"
+        << "Build: {{BUILD_ID}}\n"
+        << "Architecture: {{ARCH}}\n\n";
+
+    if (argc != 3)
+    {
+        std::cerr
+            << "Usage: win32-dll-injection-lab.exe "
+            << "<pid> <dll-path>\n";
+
+        return 2;
+    }
+
+    DWORD pid = static_cast<DWORD>(
+        std::strtoul(
+            argv[1],
+            nullptr,
+            10
+        )
+    );
+
+    if (pid == 0)
+    {
+        std::cerr
+            << "[!] Invalid PID\n";
+
+        return 2;
+    }
+
+    WORD dll_machine = 0;
+
+    if (
+        !read_dll_machine(
+            argv[2],
+            dll_machine
+        )
+    )
+    {
+        std::cerr
+            << "[!] Failed to parse DLL PE headers\n";
+
+        return 1;
+    }
+
+    std::cout
+        << "[+] DLL machine: "
+        << machine_name(dll_machine)
+        << "\n";
+
+    HANDLE process = OpenProcess(
+        PROCESS_QUERY_LIMITED_INFORMATION,
+        FALSE,
+        pid
+    );
+
+    if (process == nullptr)
+    {
+        std::cerr
+            << "[!] OpenProcess failed: "
+            << GetLastError()
+            << "\n";
+
+        return 1;
+    }
+
+    wchar_t image[MAX_PATH] = {};
+    DWORD image_size = MAX_PATH;
+
+    if (
+        QueryFullProcessImageNameW(
+            process,
+            0,
+            image,
+            &image_size
+        )
+    )
+    {
+        std::wcout
+            << L"[+] Target image: "
+            << image
+            << L"\n";
+    }
+
+    BOOL target_wow64 = FALSE;
+    BOOL self_wow64 = FALSE;
+
+    if (
+        !IsWow64Process(
+            process,
+            &target_wow64
+        )
+        || !IsWow64Process(
+            GetCurrentProcess(),
+            &self_wow64
+        )
+    )
+    {
+        std::cerr
+            << "[!] IsWow64Process failed: "
+            << GetLastError()
+            << "\n";
+
+        CloseHandle(process);
+
+        return 1;
+    }
+
+    std::cout
+        << "[+] Target WOW64: "
+        << (target_wow64 ? "yes" : "no")
+        << "\n";
+
+    std::cout
+        << "[+] Loader WOW64: "
+        << (self_wow64 ? "yes" : "no")
+        << "\n";
+
+    std::cout
+        << "[+] Remote DLL load: no\n"
+        << "[+] Remote memory write: no\n"
+        << "[+] Remote thread creation: no\n";
+
+    CloseHandle(process);
+
+    return 0;
+}

@@ -1,0 +1,48 @@
+{
+  "id": "win32-dll-injection-lab",
+  "name": "Win32 DLL Injection Compatibility Lab",
+  "language": "cpp",
+  "description": "Inspect DLL architecture and target-process compatibility without loading the DLL into the target process.",
+  "architectures": [
+    "x64",
+    "x86"
+  ],
+  "requires_payload": false,
+  "payload_types": [],
+  "build_types": [
+    "release",
+    "debug"
+  ],
+  "parameters": {},
+  "runtime_arguments": [
+    {
+      "name": "pid",
+      "type": "int",
+      "required": true,
+      "description": "Target process ID"
+    },
+    {
+      "name": "dll_path",
+      "type": "path",
+      "required": true,
+      "description": "DLL path to inspect"
+    }
+  ],
+  "technique": {
+    "alias": "dll",
+    "category": "Process / Memory",
+    "role": "technique",
+    "quick": true,
+    "runtime": "native",
+    "privilege": "varies",
+    "validation": "planned"
+  },
+  "sources": [
+    {
+      "template": "templates/main.cpp.tmpl",
+      "output": "main.cpp",
+      "compile": true
+    }
+  ],
+  "output_name": "win32-dll-injection-lab.exe"
+}
