@@ -1,0 +1,52 @@
+{
+  "id": "win32-reflective-map-lab",
+  "name": "Win32 Reflective Mapping Compatibility Lab",
+  "language": "c",
+  "description": "Inspect PE layout, imports, relocations, sections, and image metadata for reflective-mapping compatibility without loading or executing the image.",
+  "architectures": [
+    "x64",
+    "x86"
+  ],
+  "requires_payload": false,
+  "payload_types": [],
+  "build_types": [
+    "release",
+    "debug"
+  ],
+  "parameters": {
+    "max_file_bytes": {
+      "type": "int",
+      "required": false,
+      "default": 16777216,
+      "min": 512,
+      "max": 67108864,
+      "render": "raw",
+      "description": "Maximum PE file size accepted"
+    }
+  },
+  "runtime_arguments": [
+    {
+      "name": "pe_path",
+      "type": "path",
+      "required": true,
+      "description": "PE image to inspect"
+    }
+  ],
+  "technique": {
+    "alias": "reflect",
+    "category": "Process / Memory",
+    "role": "technique",
+    "quick": true,
+    "runtime": "native",
+    "privilege": "user",
+    "validation": "planned"
+  },
+  "sources": [
+    {
+      "template": "templates/main.c.tmpl",
+      "output": "main.c",
+      "compile": true
+    }
+  ],
+  "output_name": "win32-reflective-map-lab.exe"
+}

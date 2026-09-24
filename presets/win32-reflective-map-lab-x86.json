@@ -1,0 +1,10 @@
+{
+  "id": "win32-reflective-map-lab-x86",
+  "name": "win32-reflective-map-lab x86",
+  "method": "win32-reflective-map-lab",
+  "architecture": "x86",
+  "build_type": "release",
+  "parameters": {
+    "max_file_bytes": 16777216
+  }
+}

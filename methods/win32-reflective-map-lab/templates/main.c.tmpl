@@ -1,0 +1,263 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
+
+static uint16_t rd16(const unsigned char *p) {
+    return (uint16_t)p[0] | ((uint16_t)p[1] << 8);
+}
+
+static uint32_t rd32(const unsigned char *p) {
+    return (uint32_t)p[0]
+        | ((uint32_t)p[1] << 8)
+        | ((uint32_t)p[2] << 16)
+        | ((uint32_t)p[3] << 24);
+}
+
+static uint64_t rd64(const unsigned char *p) {
+    return (uint64_t)rd32(p)
+        | ((uint64_t)rd32(p + 4) << 32);
+}
+
+static int span_ok(size_t size, size_t offset, size_t need) {
+    return offset <= size && need <= size - offset;
+}
+
+static unsigned char *read_all(
+    const char *path,
+    size_t max_size,
+    size_t *out_size
+) {
+    FILE *f = fopen(path, "rb");
+    long length;
+    unsigned char *data;
+    size_t got;
+
+    if (!f) return NULL;
+
+    if (fseek(f, 0, SEEK_END) != 0) {
+        fclose(f);
+        return NULL;
+    }
+
+    length = ftell(f);
+
+    if (length < 0 || (size_t)length > max_size) {
+        fclose(f);
+        return NULL;
+    }
+
+    if (fseek(f, 0, SEEK_SET) != 0) {
+        fclose(f);
+        return NULL;
+    }
+
+    data = (unsigned char *)malloc(
+        (size_t)length ? (size_t)length : 1
+    );
+
+    if (!data) {
+        fclose(f);
+        return NULL;
+    }
+
+    got = fread(data, 1, (size_t)length, f);
+    fclose(f);
+
+    if (got != (size_t)length) {
+        free(data);
+        return NULL;
+    }
+
+    *out_size = got;
+    return data;
+}
+
+static const char *machine_name(uint16_t machine) {
+    if (machine == 0x014c) return "x86";
+    if (machine == 0x8664) return "x64";
+    if (machine == 0xAA64) return "ARM64";
+    return "other";
+}
+
+int main(int argc, char **argv) {
+    const size_t max_size = (size_t){{PARAM_MAX_FILE_BYTES}};
+
+    unsigned char *data;
+    size_t size;
+    size_t pe;
+    size_t coff;
+    size_t opt;
+
+    uint16_t machine;
+    uint16_t sections;
+    uint16_t opt_size;
+    uint16_t magic;
+
+    uint32_t entry_rva;
+    uint32_t size_of_image;
+    uint32_t size_of_headers;
+    uint64_t image_base;
+
+    uint32_t number_of_rva_sizes;
+    size_t data_dir_base;
+
+    uint32_t import_rva = 0;
+    uint32_t import_size = 0;
+    uint32_t reloc_rva = 0;
+    uint32_t reloc_size = 0;
+
+    if (argc != 2) {
+        fprintf(
+            stderr,
+            "Usage: %s <pe_path>\n",
+            argv[0]
+        );
+        return 2;
+    }
+
+    data = read_all(
+        argv[1],
+        max_size,
+        &size
+    );
+
+    if (!data) {
+        fprintf(
+            stderr,
+            "[!] Unable to read PE file\n"
+        );
+        return 3;
+    }
+
+    if (
+        !span_ok(size, 0, 0x40)
+        || data[0] != 'M'
+        || data[1] != 'Z'
+    ) {
+        fprintf(stderr, "[!] Invalid DOS header\n");
+        free(data);
+        return 4;
+    }
+
+    pe = (size_t)rd32(data + 0x3c);
+
+    if (
+        !span_ok(size, pe, 24)
+        || memcmp(data + pe, "PE\0\0", 4) != 0
+    ) {
+        fprintf(stderr, "[!] Invalid PE signature\n");
+        free(data);
+        return 5;
+    }
+
+    coff = pe + 4;
+
+    machine = rd16(data + coff);
+    sections = rd16(data + coff + 2);
+    opt_size = rd16(data + coff + 16);
+    opt = coff + 20;
+
+    if (!span_ok(size, opt, opt_size)) {
+        fprintf(stderr, "[!] Invalid optional header\n");
+        free(data);
+        return 6;
+    }
+
+    magic = rd16(data + opt);
+    entry_rva = rd32(data + opt + 16);
+    size_of_image = rd32(data + opt + 56);
+    size_of_headers = rd32(data + opt + 60);
+
+    if (magic == 0x10b) {
+        image_base = rd32(data + opt + 28);
+        number_of_rva_sizes = rd32(data + opt + 92);
+        data_dir_base = opt + 96;
+    }
+    else if (magic == 0x20b) {
+        image_base = rd64(data + opt + 24);
+        number_of_rva_sizes = rd32(data + opt + 108);
+        data_dir_base = opt + 112;
+    }
+    else {
+        fprintf(stderr, "[!] Unsupported PE format\n");
+        free(data);
+        return 7;
+    }
+
+    if (
+        number_of_rva_sizes > 1
+        && span_ok(size, data_dir_base + 8, 8)
+    ) {
+        import_rva = rd32(
+            data + data_dir_base + 8
+        );
+
+        import_size = rd32(
+            data + data_dir_base + 12
+        );
+    }
+
+    if (
+        number_of_rva_sizes > 5
+        && span_ok(size, data_dir_base + 40, 8)
+    ) {
+        reloc_rva = rd32(
+            data + data_dir_base + 40
+        );
+
+        reloc_size = rd32(
+            data + data_dir_base + 44
+        );
+    }
+
+    printf("Mifa Reflective Mapping Compatibility Lab\n");
+    printf("Build             : {{BUILD_ID}}\n");
+    printf("Tool arch         : {{ARCH}}\n");
+    printf("File              : %s\n", argv[1]);
+    printf("Machine           : %s\n", machine_name(machine));
+    printf("PE format         : %s\n",
+        magic == 0x20b ? "PE32+" : "PE32");
+    printf("Sections          : %u\n", sections);
+    printf("Entry RVA         : 0x%08lX\n",
+        (unsigned long)entry_rva);
+    printf("Image base        : 0x%llX\n",
+        (unsigned long long)image_base);
+    printf("Size of image     : 0x%08lX\n",
+        (unsigned long)size_of_image);
+    printf("Size of headers   : 0x%08lX\n",
+        (unsigned long)size_of_headers);
+
+    printf("Import directory  : %s",
+        import_rva ? "present" : "absent");
+
+    if (import_rva) {
+        printf(
+            " (RVA 0x%08lX, size 0x%08lX)",
+            (unsigned long)import_rva,
+            (unsigned long)import_size
+        );
+    }
+
+    printf("\n");
+
+    printf("Reloc directory   : %s",
+        reloc_rva ? "present" : "absent");
+
+    if (reloc_rva) {
+        printf(
+            " (RVA 0x%08lX, size 0x%08lX)",
+            (unsigned long)reloc_rva,
+            (unsigned long)reloc_size
+        );
+    }
+
+    printf("\n");
+
+    printf("Image mapped      : no\n");
+    printf("Memory executable : no\n");
+    printf("Entry invoked     : no\n");
+
+    free(data);
+    return 0;
+}
