@@ -41,5 +41,14 @@
       "compile": true
     }
   ],
-  "output_name": "win32-local-thread.exe"
+  "output_name": "win32-local-thread.exe",
+  "technique": {
+    "alias": "native",
+    "category": "Native",
+    "role": "technique",
+    "quick": true,
+    "runtime": "native",
+    "privilege": "user",
+    "validation": "runtime-tested"
+  }
 }
