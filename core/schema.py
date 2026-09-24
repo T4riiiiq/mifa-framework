@@ -62,9 +62,184 @@ class MethodSchemaValidator:
         "hex"
     }
 
+    SUPPORTED_TECHNIQUE_ROLES = {
+        "technique",
+        "helper",
+        "inspect"
+    }
+
+    SUPPORTED_TECHNIQUE_RUNTIMES = {
+        "native",
+        "managed",
+        "script",
+        "kernel",
+        "mixed"
+    }
+
+    SUPPORTED_TECHNIQUE_PRIVILEGES = {
+        "user",
+        "admin",
+        "system",
+        "driver",
+        "varies"
+    }
+
+    SUPPORTED_TECHNIQUE_VALIDATION = {
+        "planned",
+        "build-tested",
+        "runtime-tested"
+    }
+
+    TECHNIQUE_ALIAS = re.compile(
+        r"^[a-z][a-z0-9-]*$"
+    )
+
     PARAMETER_NAME = re.compile(
         r"^[A-Za-z_][A-Za-z0-9_]*$"
     )
+
+    def _validate_technique(
+        self,
+        method,
+        errors
+    ):
+        technique = method.get(
+            "technique"
+        )
+
+        if technique is None:
+            return
+
+        if not isinstance(
+            technique,
+            dict
+        ):
+            errors.append(
+                "technique must be an object"
+            )
+            return
+
+        required_fields = [
+            "alias",
+            "category",
+            "role",
+            "quick",
+            "runtime",
+            "privilege",
+            "validation"
+        ]
+
+        for field in required_fields:
+            if field not in technique:
+                errors.append(
+                    f"technique missing required field: {field}"
+                )
+
+        alias = technique.get(
+            "alias"
+        )
+
+        if (
+            alias is not None
+            and (
+                not isinstance(
+                    alias,
+                    str
+                )
+                or not self.TECHNIQUE_ALIAS.match(
+                    alias
+                )
+            )
+        ):
+            errors.append(
+                "technique.alias must be a lowercase "
+                "CLI-safe alias"
+            )
+
+        category = technique.get(
+            "category"
+        )
+
+        if (
+            category is not None
+            and (
+                not isinstance(
+                    category,
+                    str
+                )
+                or not category.strip()
+            )
+        ):
+            errors.append(
+                "technique.category must be a "
+                "non-empty string"
+            )
+
+        role = technique.get(
+            "role"
+        )
+
+        if (
+            role is not None
+            and role not in self.SUPPORTED_TECHNIQUE_ROLES
+        ):
+            errors.append(
+                f"Unsupported technique role: {role}"
+            )
+
+        quick = technique.get(
+            "quick"
+        )
+
+        if (
+            quick is not None
+            and not isinstance(
+                quick,
+                bool
+            )
+        ):
+            errors.append(
+                "technique.quick must be true or false"
+            )
+
+        runtime = technique.get(
+            "runtime"
+        )
+
+        if (
+            runtime is not None
+            and runtime
+            not in self.SUPPORTED_TECHNIQUE_RUNTIMES
+        ):
+            errors.append(
+                f"Unsupported technique runtime: {runtime}"
+            )
+
+        privilege = technique.get(
+            "privilege"
+        )
+
+        if (
+            privilege is not None
+            and privilege
+            not in self.SUPPORTED_TECHNIQUE_PRIVILEGES
+        ):
+            errors.append(
+                f"Unsupported technique privilege: {privilege}"
+            )
+
+        validation = technique.get(
+            "validation"
+        )
+
+        if (
+            validation is not None
+            and validation
+            not in self.SUPPORTED_TECHNIQUE_VALIDATION
+        ):
+            errors.append(
+                f"Unsupported technique validation: {validation}"
+            )
 
     def _validate_payload_contract(
         self,
@@ -856,6 +1031,11 @@ class MethodSchemaValidator:
                 "output_name must be a "
                 "non-empty string"
             )
+
+        self._validate_technique(
+            method,
+            errors
+        )
 
         self._validate_payload_contract(
             method,

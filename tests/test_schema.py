@@ -107,5 +107,66 @@ class SchemaTests(
         )
 
 
+    def test_optional_technique_contract_valid(
+        self
+    ):
+        self.method["technique"] = {
+            "alias": "example",
+            "category": "Process / Memory",
+            "role": "technique",
+            "quick": True,
+            "runtime": "native",
+            "privilege": "user",
+            "validation": "planned"
+        }
+
+        self.assertEqual(
+            self.schema.validate(
+                self.method
+            ),
+            []
+        )
+
+    def test_invalid_technique_role_rejected(
+        self
+    ):
+        self.method["technique"] = {
+            "alias": "example",
+            "category": "Process / Memory",
+            "role": "invalid",
+            "quick": True,
+            "runtime": "native",
+            "privilege": "user",
+            "validation": "planned"
+        }
+
+        errors = self.schema.validate(
+            self.method
+        )
+
+        self.assertTrue(
+            any(
+                "Unsupported technique role"
+                in error
+                for error in errors
+            )
+        )
+
+    def test_technique_contract_remains_optional(
+        self
+    ):
+        self.assertNotIn(
+            "technique",
+            self.method
+        )
+
+        self.assertEqual(
+            self.schema.validate(
+                self.method
+            ),
+            []
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

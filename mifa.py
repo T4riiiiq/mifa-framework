@@ -116,6 +116,46 @@ def show_method(
         )
     )
 
+    technique = method.get(
+        "technique"
+    )
+
+    if technique is not None:
+        print(
+            f"Technique alias : "
+            f"{technique.get('alias', '-')}"
+        )
+
+        print(
+            f"Technique role  : "
+            f"{technique.get('role', '-')}"
+        )
+
+        print(
+            f"Category        : "
+            f"{technique.get('category', '-')}"
+        )
+
+        print(
+            f"Runtime         : "
+            f"{technique.get('runtime', '-')}"
+        )
+
+        print(
+            f"Privilege       : "
+            f"{technique.get('privilege', '-')}"
+        )
+
+        print(
+            f"Quick           : "
+            f"{technique.get('quick', False)}"
+        )
+
+        print(
+            f"Validation      : "
+            f"{technique.get('validation', '-')}"
+        )
+
     print(
         f"Requires payload: "
         f"{method.get('requires_payload', False)}"
