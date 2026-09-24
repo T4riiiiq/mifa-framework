@@ -1,0 +1,314 @@
+#include <windows.h>
+
+#include <cstdint>
+#include <fstream>
+#include <iostream>
+#include <string>
+
+
+static const char* machine_name(WORD machine)
+{
+    switch (machine)
+    {
+        case IMAGE_FILE_MACHINE_I386:
+            return "x86";
+
+        case IMAGE_FILE_MACHINE_AMD64:
+            return "x64";
+
+        case IMAGE_FILE_MACHINE_ARM64:
+            return "arm64";
+
+        default:
+            return "unknown";
+    }
+}
+
+
+static bool read_pe_info(
+    const char* path,
+    WORD& machine,
+    DWORD& entry_rva,
+    DWORD& image_size
+)
+{
+    std::ifstream file(
+        path,
+        std::ios::binary
+    );
+
+    if (!file)
+    {
+        return false;
+    }
+
+    IMAGE_DOS_HEADER dos = {};
+
+    file.read(
+        reinterpret_cast<char*>(&dos),
+        sizeof(dos)
+    );
+
+    if (
+        !file
+        || dos.e_magic != IMAGE_DOS_SIGNATURE
+    )
+    {
+        return false;
+    }
+
+    file.seekg(
+        dos.e_lfanew,
+        std::ios::beg
+    );
+
+    DWORD signature = 0;
+
+    file.read(
+        reinterpret_cast<char*>(&signature),
+        sizeof(signature)
+    );
+
+    if (
+        !file
+        || signature != IMAGE_NT_SIGNATURE
+    )
+    {
+        return false;
+    }
+
+    IMAGE_FILE_HEADER file_header = {};
+
+    file.read(
+        reinterpret_cast<char*>(&file_header),
+        sizeof(file_header)
+    );
+
+    if (!file)
+    {
+        return false;
+    }
+
+    machine = file_header.Machine;
+
+    WORD magic = 0;
+
+    file.read(
+        reinterpret_cast<char*>(&magic),
+        sizeof(magic)
+    );
+
+    if (!file)
+    {
+        return false;
+    }
+
+    file.seekg(
+        -static_cast<std::streamoff>(sizeof(magic)),
+        std::ios::cur
+    );
+
+    if (magic == IMAGE_NT_OPTIONAL_HDR64_MAGIC)
+    {
+        IMAGE_OPTIONAL_HEADER64 optional = {};
+
+        file.read(
+            reinterpret_cast<char*>(&optional),
+            sizeof(optional)
+        );
+
+        if (!file)
+        {
+            return false;
+        }
+
+        entry_rva = optional.AddressOfEntryPoint;
+        image_size = optional.SizeOfImage;
+
+        return true;
+    }
+
+    if (magic == IMAGE_NT_OPTIONAL_HDR32_MAGIC)
+    {
+        IMAGE_OPTIONAL_HEADER32 optional = {};
+
+        file.read(
+            reinterpret_cast<char*>(&optional),
+            sizeof(optional)
+        );
+
+        if (!file)
+        {
+            return false;
+        }
+
+        entry_rva = optional.AddressOfEntryPoint;
+        image_size = optional.SizeOfImage;
+
+        return true;
+    }
+
+    return false;
+}
+
+
+int main(
+    int argc,
+    char** argv
+)
+{
+    std::cout
+        << "Mifa Hollowing Compatibility Lab\n"
+        << "Build: {{BUILD_ID}}\n"
+        << "Architecture: {{ARCH}}\n\n";
+
+    if (argc != 2)
+    {
+        std::cerr
+            << "Usage: win32-hollow-lab.exe "
+            << "<target-exe>\n";
+
+        return 2;
+    }
+
+    WORD machine = 0;
+    DWORD entry_rva = 0;
+    DWORD image_size = 0;
+
+    if (
+        !read_pe_info(
+            argv[1],
+            machine,
+            entry_rva,
+            image_size
+        )
+    )
+    {
+        std::cerr
+            << "[!] Failed to parse target PE\n";
+
+        return 1;
+    }
+
+    std::cout
+        << "[+] Target machine: "
+        << machine_name(machine)
+        << "\n";
+
+    std::cout
+        << "[+] Entry RVA: 0x"
+        << std::hex
+        << entry_rva
+        << std::dec
+        << "\n";
+
+    std::cout
+        << "[+] Image size: 0x"
+        << std::hex
+        << image_size
+        << std::dec
+        << "\n";
+
+    STARTUPINFOA startup = {};
+    startup.cb = sizeof(startup);
+
+    PROCESS_INFORMATION process = {};
+
+    BOOL created = CreateProcessA(
+        argv[1],
+        nullptr,
+        nullptr,
+        nullptr,
+        FALSE,
+        CREATE_SUSPENDED,
+        nullptr,
+        nullptr,
+        &startup,
+        &process
+    );
+
+    if (!created)
+    {
+        std::cerr
+            << "[!] CreateProcessA failed: "
+            << GetLastError()
+            << "\n";
+
+        return 1;
+    }
+
+    std::cout
+        << "[+] Process created suspended\n";
+
+    std::cout
+        << "[+] PID: "
+        << process.dwProcessId
+        << "\n";
+
+    std::cout
+        << "[+] TID: "
+        << process.dwThreadId
+        << "\n";
+
+    BOOL wow64 = FALSE;
+
+    if (
+        IsWow64Process(
+            process.hProcess,
+            &wow64
+        )
+    )
+    {
+        std::cout
+            << "[+] Target WOW64: "
+            << (wow64 ? "yes" : "no")
+            << "\n";
+    }
+
+    char image_path[MAX_PATH] = {};
+    DWORD image_path_size = MAX_PATH;
+
+    if (
+        QueryFullProcessImageNameA(
+            process.hProcess,
+            0,
+            image_path,
+            &image_path_size
+        )
+    )
+    {
+        std::cout
+            << "[+] Runtime image: "
+            << image_path
+            << "\n";
+    }
+
+    std::cout
+        << "[+] Remote memory write: no\n"
+        << "[+] Image replacement: no\n"
+        << "[+] Thread context modification: no\n"
+        << "[+] Process resumed: no\n";
+
+    TerminateProcess(
+        process.hProcess,
+        0
+    );
+
+    WaitForSingleObject(
+        process.hProcess,
+        5000
+    );
+
+    CloseHandle(
+        process.hThread
+    );
+
+    CloseHandle(
+        process.hProcess
+    );
+
+    std::cout
+        << "[+] Suspended test process terminated\n";
+
+    return 0;
+}

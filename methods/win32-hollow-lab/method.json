@@ -1,0 +1,42 @@
+{
+  "id": "win32-hollow-lab",
+  "name": "Win32 Hollowing Compatibility Lab",
+  "language": "cpp",
+  "description": "Create a Windows process in suspended state and inspect its PE and runtime compatibility without modifying remote memory or resuming execution.",
+  "architectures": [
+    "x64",
+    "x86"
+  ],
+  "requires_payload": false,
+  "payload_types": [],
+  "build_types": [
+    "release",
+    "debug"
+  ],
+  "parameters": {},
+  "runtime_arguments": [
+    {
+      "name": "target_path",
+      "type": "path",
+      "required": true,
+      "description": "Executable to create in suspended state"
+    }
+  ],
+  "technique": {
+    "alias": "hollow",
+    "category": "Process / Memory",
+    "role": "technique",
+    "quick": true,
+    "runtime": "native",
+    "privilege": "varies",
+    "validation": "planned"
+  },
+  "sources": [
+    {
+      "template": "templates/main.cpp.tmpl",
+      "output": "main.cpp",
+      "compile": true
+    }
+  ],
+  "output_name": "win32-hollow-lab.exe"
+}

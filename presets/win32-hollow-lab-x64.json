@@ -1,0 +1,8 @@
+{
+  "id": "win32-hollow-lab-x64",
+  "name": "win32-hollow-lab x64",
+  "method": "win32-hollow-lab",
+  "architecture": "x64",
+  "build_type": "release",
+  "parameters": {}
+}
