@@ -1,0 +1,8 @@
+{
+  "id": "kernel-security-x86",
+  "name": "kernel-security x86",
+  "method": "kernel-security",
+  "architecture": "x86",
+  "build_type": "release",
+  "parameters": {}
+}

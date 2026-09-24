@@ -1,0 +1,8 @@
+{
+  "id": "win32-trusted-hosts-x86",
+  "name": "win32-trusted-hosts x86",
+  "method": "win32-trusted-hosts",
+  "architecture": "x86",
+  "build_type": "release",
+  "parameters": {}
+}

@@ -1,0 +1,140 @@
+#include <windows.h>
+#include <iostream>
+#include <string>
+
+static const char* binary_type_name(
+    DWORD type
+)
+{
+    switch (type)
+    {
+        case SCS_32BIT_BINARY:
+            return "32-bit";
+
+        case SCS_64BIT_BINARY:
+            return "64-bit";
+
+        case SCS_DOS_BINARY:
+            return "DOS";
+
+        case SCS_WOW_BINARY:
+            return "WOW";
+
+        default:
+            return "other";
+    }
+}
+
+static void inspect_host(
+    const char* name,
+    const std::string& path
+)
+{
+    std::cout
+        << "[+] "
+        << name
+        << "\n";
+
+    std::cout
+        << "    Path: "
+        << path
+        << "\n";
+
+    DWORD attributes =
+        GetFileAttributesA(
+            path.c_str()
+        );
+
+    if (
+        attributes == INVALID_FILE_ATTRIBUTES
+        || (
+            attributes
+            & FILE_ATTRIBUTE_DIRECTORY
+        )
+    )
+    {
+        std::cout
+            << "    Present: no\n";
+        return;
+    }
+
+    std::cout
+        << "    Present: yes\n";
+
+    DWORD type = 0;
+
+    if (
+        GetBinaryTypeA(
+            path.c_str(),
+            &type
+        )
+    )
+    {
+        std::cout
+            << "    Binary type: "
+            << binary_type_name(type)
+            << "\n";
+    }
+    else
+    {
+        std::cout
+            << "    Binary type: unavailable\n";
+    }
+}
+
+int main()
+{
+    std::cout
+        << "Mifa System Host Inventory Helper\n"
+        << "Build: {{BUILD_ID}}\n"
+        << "Architecture: {{ARCH}}\n\n";
+
+    char windows[MAX_PATH] = {};
+
+    UINT length =
+        GetWindowsDirectoryA(
+            windows,
+            MAX_PATH
+        );
+
+    if (
+        length == 0
+        || length >= MAX_PATH
+    )
+    {
+        std::cerr
+            << "[!] Unable to obtain Windows directory\n";
+
+        return 1;
+    }
+
+    std::string base(windows);
+    std::string system32 =
+        base + "\\System32\\";
+
+    inspect_host(
+        "wscript.exe",
+        system32 + "wscript.exe"
+    );
+
+    inspect_host(
+        "cscript.exe",
+        system32 + "cscript.exe"
+    );
+
+    inspect_host(
+        "notepad.exe",
+        system32 + "notepad.exe"
+    );
+
+    inspect_host(
+        "rundll32.exe",
+        system32 + "rundll32.exe"
+    );
+
+    std::cout
+        << "[+] Hosts launched: no\n"
+        << "[+] Arguments generated: no\n";
+
+    return 0;
+}

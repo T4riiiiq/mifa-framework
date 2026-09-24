@@ -1,0 +1,35 @@
+{
+  "id": "kernel-security",
+  "name": "Windows Kernel Security Inspector",
+  "language": "cpp",
+  "description": "Inspect Windows kernel architecture, operating-system build, and core kernel image availability without loading a driver or modifying kernel state.",
+  "architectures": [
+    "x64",
+    "x86"
+  ],
+  "requires_payload": false,
+  "payload_types": [],
+  "build_types": [
+    "release",
+    "debug"
+  ],
+  "parameters": {},
+  "runtime_arguments": [],
+  "technique": {
+    "alias": "kernel",
+    "category": "Kernel Security",
+    "role": "inspect",
+    "quick": false,
+    "runtime": "kernel",
+    "privilege": "user",
+    "validation": "planned"
+  },
+  "sources": [
+    {
+      "template": "templates/main.cpp.tmpl",
+      "output": "main.cpp",
+      "compile": true
+    }
+  ],
+  "output_name": "kernel-security.exe"
+}

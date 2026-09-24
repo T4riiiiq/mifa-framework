@@ -1,0 +1,8 @@
+{
+  "id": "win32-runner-helper-x64",
+  "name": "win32-runner-helper x64",
+  "method": "win32-runner-helper",
+  "architecture": "x64",
+  "build_type": "release",
+  "parameters": {}
+}

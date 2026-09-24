@@ -1,0 +1,114 @@
+#include <windows.h>
+#include <iostream>
+#include <string>
+
+static bool file_exists(const std::string& path)
+{
+    DWORD attributes = GetFileAttributesA(path.c_str());
+
+    return attributes != INVALID_FILE_ATTRIBUTES
+        && !(attributes & FILE_ATTRIBUTE_DIRECTORY);
+}
+
+static void inspect_amsi(const std::string& path)
+{
+    std::cout
+        << "[+] AMSI path: "
+        << path
+        << "\n";
+
+    if (!file_exists(path))
+    {
+        std::cout
+            << "[+] File present: no\n";
+        return;
+    }
+
+    std::cout
+        << "[+] File present: yes\n";
+
+    HMODULE module = LoadLibraryExA(
+        path.c_str(),
+        nullptr,
+        DONT_RESOLVE_DLL_REFERENCES
+    );
+
+    if (module == nullptr)
+    {
+        std::cout
+            << "[!] Static mapping failed: "
+            << GetLastError()
+            << "\n";
+        return;
+    }
+
+    const char* exports[] = {
+        "AmsiInitialize",
+        "AmsiUninitialize",
+        "AmsiOpenSession",
+        "AmsiCloseSession",
+        "AmsiScanBuffer",
+        "AmsiScanString"
+    };
+
+    for (const char* name : exports)
+    {
+        FARPROC address =
+            GetProcAddress(
+                module,
+                name
+            );
+
+        std::cout
+            << "[+] Export "
+            << name
+            << ": "
+            << (address ? "present" : "absent")
+            << "\n";
+    }
+
+    FreeLibrary(module);
+}
+
+int main()
+{
+    std::cout
+        << "Mifa AMSI Compatibility Inspector\n"
+        << "Build: {{BUILD_ID}}\n"
+        << "Architecture: {{ARCH}}\n\n";
+
+    char windows[MAX_PATH] = {};
+
+    UINT length =
+        GetWindowsDirectoryA(
+            windows,
+            MAX_PATH
+        );
+
+    if (
+        length == 0
+        || length >= MAX_PATH
+    )
+    {
+        std::cerr
+            << "[!] Unable to obtain Windows directory\n";
+        return 1;
+    }
+
+    std::string base(windows);
+
+    inspect_amsi(
+        base + "\\System32\\amsi.dll"
+    );
+
+    inspect_amsi(
+        base + "\\SysWOW64\\amsi.dll"
+    );
+
+    std::cout
+        << "[+] AMSI session created: no\n"
+        << "[+] Content scanned: no\n"
+        << "[+] Security configuration modified: no\n";
+
+    return 0;
+}

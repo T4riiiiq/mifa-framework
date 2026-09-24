@@ -1,0 +1,116 @@
+#include <windows.h>
+#include <iostream>
+#include <string>
+
+static bool file_exists(const std::string& path)
+{
+    DWORD attributes = GetFileAttributesA(path.c_str());
+
+    return attributes != INVALID_FILE_ATTRIBUTES
+        && !(attributes & FILE_ATTRIBUTE_DIRECTORY);
+}
+
+static unsigned long count_files(
+    const std::string& pattern
+)
+{
+    WIN32_FIND_DATAA data = {};
+
+    HANDLE search =
+        FindFirstFileA(
+            pattern.c_str(),
+            &data
+        );
+
+    if (search == INVALID_HANDLE_VALUE)
+    {
+        return 0;
+    }
+
+    unsigned long count = 0;
+
+    do
+    {
+        if (
+            !(data.dwFileAttributes
+              & FILE_ATTRIBUTE_DIRECTORY)
+        )
+        {
+            ++count;
+        }
+    }
+    while (
+        FindNextFileA(
+            search,
+            &data
+        )
+    );
+
+    FindClose(search);
+
+    return count;
+}
+
+int main()
+{
+    std::cout
+        << "Mifa Application Control Inspector\n"
+        << "Build: {{BUILD_ID}}\n"
+        << "Architecture: {{ARCH}}\n\n";
+
+    char windows[MAX_PATH] = {};
+
+    UINT length =
+        GetWindowsDirectoryA(
+            windows,
+            MAX_PATH
+        );
+
+    if (
+        length == 0
+        || length >= MAX_PATH
+    )
+    {
+        std::cerr
+            << "[!] Unable to obtain Windows directory\n";
+
+        return 1;
+    }
+
+    std::string base(windows);
+
+    std::string legacy_policy =
+        base
+        + "\\System32\\CodeIntegrity\\SIPolicy.p7b";
+
+    std::string active_policies =
+        base
+        + "\\System32\\CodeIntegrity\\"
+          "CiPolicies\\Active\\*.cip";
+
+    std::cout
+        << "[+] Legacy Code Integrity policy: "
+        << (
+            file_exists(legacy_policy)
+                ? "present"
+                : "absent"
+        )
+        << "\n";
+
+    std::cout
+        << "[+] Active .cip policies: "
+        << count_files(active_policies)
+        << "\n";
+
+    std::cout
+        << "[+] Policy directory inspected: "
+        << base
+        << "\\System32\\CodeIntegrity\n";
+
+    std::cout
+        << "[+] Policy modified: no\n"
+        << "[+] Execution attempted: no\n"
+        << "[+] Security control changed: no\n";
+
+    return 0;
+}

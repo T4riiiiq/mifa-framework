@@ -1,0 +1,35 @@
+{
+  "id": "win32-trusted-hosts",
+  "name": "Win32 System Host Inventory Helper",
+  "language": "cpp",
+  "description": "Inventory selected Windows system-host binaries and report basic architecture information without launching them.",
+  "architectures": [
+    "x64",
+    "x86"
+  ],
+  "requires_payload": false,
+  "payload_types": [],
+  "build_types": [
+    "release",
+    "debug"
+  ],
+  "parameters": {},
+  "runtime_arguments": [],
+  "technique": {
+    "alias": "trusted",
+    "category": "Execution Hosts",
+    "role": "helper",
+    "quick": false,
+    "runtime": "native",
+    "privilege": "user",
+    "validation": "planned"
+  },
+  "sources": [
+    {
+      "template": "templates/main.cpp.tmpl",
+      "output": "main.cpp",
+      "compile": true
+    }
+  ],
+  "output_name": "win32-trusted-hosts.exe"
+}

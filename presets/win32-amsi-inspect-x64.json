@@ -1,0 +1,8 @@
+{
+  "id": "win32-amsi-inspect-x64",
+  "name": "win32-amsi-inspect x64",
+  "method": "win32-amsi-inspect",
+  "architecture": "x64",
+  "build_type": "release",
+  "parameters": {}
+}

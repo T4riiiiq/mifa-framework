@@ -1,0 +1,8 @@
+{
+  "id": "win32-appcontrol-inspect-x64",
+  "name": "win32-appcontrol-inspect x64",
+  "method": "win32-appcontrol-inspect",
+  "architecture": "x64",
+  "build_type": "release",
+  "parameters": {}
+}

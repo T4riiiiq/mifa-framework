@@ -9,7 +9,6 @@ Status values:
 
 - `Implemented` - already available in Mifa.
 - `Foundation Exists` - supporting primitives are already available.
-- `Candidate Technique` - planned as a first-class Technique Method.
 - `Helper` - supports one or more techniques but is not a primary method.
 - `Inspect Only` - exposed for inspection, compatibility, or guidance.
 - `Deferred` - intentionally outside the current scope.
@@ -150,7 +149,7 @@ First-class techniques:
 6. `managed`
 7. `jscript`
 
-Supporting capabilities:
+Supporting capabilities (implemented at helper/inspect scope):
 
 8. `amsi`
 9. `appcontrol`
@@ -159,3 +158,5 @@ Supporting capabilities:
 12. `kernel`
 
 The first-class technique layer is implemented at the current compatibility and inspection scope.
+
+The supporting capability layer is implemented at helper/inspection scope and does not modify security controls, execute supplied payloads, or alter kernel state.

@@ -1,0 +1,149 @@
+#include <windows.h>
+#include <iostream>
+#include <string>
+
+struct MifaOsVersionInfo
+{
+    ULONG size;
+    ULONG major;
+    ULONG minor;
+    ULONG build;
+    ULONG platform;
+    WCHAR service_pack[128];
+};
+
+using RtlGetVersionFn =
+    LONG (WINAPI*)(
+        MifaOsVersionInfo*
+    );
+
+static const char* architecture_name(
+    WORD architecture
+)
+{
+    switch (architecture)
+    {
+        case PROCESSOR_ARCHITECTURE_AMD64:
+            return "x64";
+
+        case PROCESSOR_ARCHITECTURE_INTEL:
+            return "x86";
+
+        case PROCESSOR_ARCHITECTURE_ARM64:
+            return "ARM64";
+
+        default:
+            return "other";
+    }
+}
+
+int main()
+{
+    std::cout
+        << "Mifa Windows Kernel Security Inspector\n"
+        << "Build: {{BUILD_ID}}\n"
+        << "Architecture: {{ARCH}}\n\n";
+
+    SYSTEM_INFO system_info = {};
+
+    GetNativeSystemInfo(
+        &system_info
+    );
+
+    std::cout
+        << "[+] Native architecture: "
+        << architecture_name(
+            system_info
+                .wProcessorArchitecture
+        )
+        << "\n";
+
+    std::cout
+        << "[+] Page size: "
+        << system_info.dwPageSize
+        << "\n";
+
+    HMODULE ntdll =
+        GetModuleHandleA(
+            "ntdll.dll"
+        );
+
+    if (ntdll != nullptr)
+    {
+        auto rtl_get_version =
+            reinterpret_cast<RtlGetVersionFn>(
+                GetProcAddress(
+                    ntdll,
+                    "RtlGetVersion"
+                )
+            );
+
+        if (rtl_get_version != nullptr)
+        {
+            MifaOsVersionInfo version = {};
+            version.size = sizeof(version);
+
+            if (
+                rtl_get_version(
+                    &version
+                ) == 0
+            )
+            {
+                std::cout
+                    << "[+] Windows version: "
+                    << version.major
+                    << "."
+                    << version.minor
+                    << " build "
+                    << version.build
+                    << "\n";
+            }
+        }
+    }
+
+    char system_directory[MAX_PATH] = {};
+
+    UINT length =
+        GetSystemDirectoryA(
+            system_directory,
+            MAX_PATH
+        );
+
+    if (
+        length != 0
+        && length < MAX_PATH
+    )
+    {
+        std::string kernel_path =
+            std::string(system_directory)
+            + "\\ntoskrnl.exe";
+
+        DWORD attributes =
+            GetFileAttributesA(
+                kernel_path.c_str()
+            );
+
+        std::cout
+            << "[+] Kernel image: "
+            << kernel_path
+            << "\n";
+
+        std::cout
+            << "[+] Kernel image present: "
+            << (
+                attributes
+                    != INVALID_FILE_ATTRIBUTES
+                ? "yes"
+                : "no"
+            )
+            << "\n";
+    }
+
+    std::cout
+        << "[+] Driver loaded: no\n"
+        << "[+] Kernel memory accessed: no\n"
+        << "[+] Kernel state modified: no\n"
+        << "[+] Security callbacks modified: no\n";
+
+    return 0;
+}

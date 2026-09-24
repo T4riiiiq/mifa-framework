@@ -1,0 +1,42 @@
+{
+  "id": "win32-runner-helper",
+  "name": "Win32 Runtime Input Helper",
+  "language": "cpp",
+  "description": "Perform local runtime-input preflight and binary classification without loading or executing the supplied input.",
+  "architectures": [
+    "x64",
+    "x86"
+  ],
+  "requires_payload": false,
+  "payload_types": [],
+  "build_types": [
+    "release",
+    "debug"
+  ],
+  "parameters": {},
+  "runtime_arguments": [
+    {
+      "name": "input_path",
+      "type": "path",
+      "required": true,
+      "description": "Input file to inspect before runtime use"
+    }
+  ],
+  "technique": {
+    "alias": "runner",
+    "category": "Payload / Runtime",
+    "role": "helper",
+    "quick": false,
+    "runtime": "native",
+    "privilege": "user",
+    "validation": "planned"
+  },
+  "sources": [
+    {
+      "template": "templates/main.cpp.tmpl",
+      "output": "main.cpp",
+      "compile": true
+    }
+  ],
+  "output_name": "win32-runner-helper.exe"
+}

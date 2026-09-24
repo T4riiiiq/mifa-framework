@@ -1,0 +1,35 @@
+{
+  "id": "win32-appcontrol-inspect",
+  "name": "Win32 Application Control Inspector",
+  "language": "cpp",
+  "description": "Inspect local Windows application-control policy artifacts without changing policy or execution configuration.",
+  "architectures": [
+    "x64",
+    "x86"
+  ],
+  "requires_payload": false,
+  "payload_types": [],
+  "build_types": [
+    "release",
+    "debug"
+  ],
+  "parameters": {},
+  "runtime_arguments": [],
+  "technique": {
+    "alias": "appcontrol",
+    "category": "Security Controls",
+    "role": "inspect",
+    "quick": false,
+    "runtime": "native",
+    "privilege": "user",
+    "validation": "planned"
+  },
+  "sources": [
+    {
+      "template": "templates/main.cpp.tmpl",
+      "output": "main.cpp",
+      "compile": true
+    }
+  ],
+  "output_name": "win32-appcontrol-inspect.exe"
+}

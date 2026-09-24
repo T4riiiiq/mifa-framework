@@ -23,8 +23,18 @@ QUICK_ENTRIES = [
 ]
 
 
+SUPPORT_ENTRIES = [
+    {"alias": "amsi", "method": "win32-amsi-inspect", "category": "Inspect", "description": "Inspect AMSI runtime compatibility"},
+    {"alias": "appcontrol", "method": "win32-appcontrol-inspect", "category": "Inspect", "description": "Inspect application-control policy artifacts"},
+    {"alias": "trusted", "method": "win32-trusted-hosts", "category": "Helpers", "description": "Inventory selected Windows system hosts"},
+    {"alias": "runner", "method": "win32-runner-helper", "category": "Helpers", "description": "Inspect runtime input compatibility"},
+    {"alias": "kernel", "method": "kernel-security", "category": "Inspect", "description": "Inspect Windows kernel security context"},
+]
+
+
 def alias_map():
-    return {entry["alias"]: entry["method"] for entry in QUICK_ENTRIES}
+    entries = QUICK_ENTRIES + SUPPORT_ENTRIES
+    return {entry["alias"]: entry["method"] for entry in entries}
 
 
 def resolve_target(target, catalog):
