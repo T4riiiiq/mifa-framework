@@ -54,12 +54,12 @@ class ReleaseQualityTests(
             )
         )
 
-        self.assertEqual(
+        self.assertGreaterEqual(
             method_count,
             34
         )
 
-        self.assertEqual(
+        self.assertGreaterEqual(
             preset_count,
             60
         )

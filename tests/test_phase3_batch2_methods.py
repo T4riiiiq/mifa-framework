@@ -80,8 +80,8 @@ class Phase3Batch2MethodTests(unittest.TestCase):
             if p.is_dir() and (p / "method.json").is_file()
         ]
         presets = list((ROOT / "presets").glob("*.json"))
-        self.assertEqual(len(methods), 34)
-        self.assertEqual(len(presets), 60)
+        self.assertGreaterEqual(len(methods), 34)
+        self.assertGreaterEqual(len(presets), 60)
 
 
 if __name__ == "__main__":

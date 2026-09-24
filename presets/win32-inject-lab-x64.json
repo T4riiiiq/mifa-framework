@@ -1,0 +1,8 @@
+{
+  "id": "win32-inject-lab-x64",
+  "name": "win32-inject-lab x64",
+  "method": "win32-inject-lab",
+  "architecture": "x64",
+  "build_type": "release",
+  "parameters": {}
+}

@@ -1,0 +1,42 @@
+{
+  "id": "win32-inject-lab",
+  "name": "Win32 Injection Compatibility Lab",
+  "language": "cpp",
+  "description": "Inspect a target process, architecture compatibility, access rights, and virtual-memory layout without writing memory or creating remote threads.",
+  "architectures": [
+    "x64",
+    "x86"
+  ],
+  "requires_payload": false,
+  "payload_types": [],
+  "build_types": [
+    "release",
+    "debug"
+  ],
+  "parameters": {},
+  "runtime_arguments": [
+    {
+      "name": "pid",
+      "type": "int",
+      "required": true,
+      "description": "Target process ID"
+    }
+  ],
+  "technique": {
+    "alias": "inject",
+    "category": "Process / Memory",
+    "role": "technique",
+    "quick": true,
+    "runtime": "native",
+    "privilege": "varies",
+    "validation": "planned"
+  },
+  "sources": [
+    {
+      "template": "templates/main.cpp.tmpl",
+      "output": "main.cpp",
+      "compile": true
+    }
+  ],
+  "output_name": "win32-inject-lab.exe"
+}

@@ -1,0 +1,142 @@
+#include <windows.h>
+
+#include <cstdlib>
+#include <iomanip>
+#include <iostream>
+
+
+int main(int argc, char** argv)
+{
+    std::cout << "Mifa Injection Compatibility Lab\n";
+    std::cout << "Build: {{BUILD_ID}}\n";
+    std::cout << "Architecture: {{ARCH}}\n\n";
+
+    if (argc != 2)
+    {
+        std::cerr << "Usage: win32-inject-lab.exe <pid>\n";
+        return 2;
+    }
+
+    DWORD pid = static_cast<DWORD>(
+        std::strtoul(argv[1], nullptr, 10)
+    );
+
+    if (pid == 0)
+    {
+        std::cerr << "[!] Invalid PID\n";
+        return 2;
+    }
+
+    HANDLE process = OpenProcess(
+        PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
+        FALSE,
+        pid
+    );
+
+    if (process == nullptr)
+    {
+        std::cerr
+            << "[!] OpenProcess failed: "
+            << GetLastError()
+            << "\n";
+        return 1;
+    }
+
+    wchar_t image[MAX_PATH] = {};
+    DWORD image_size = MAX_PATH;
+
+    if (QueryFullProcessImageNameW(
+            process,
+            0,
+            image,
+            &image_size
+        ))
+    {
+        std::wcout
+            << L"[+] Image: "
+            << image
+            << L"\n";
+    }
+    else
+    {
+        std::cout
+            << "[!] QueryFullProcessImageNameW failed: "
+            << GetLastError()
+            << "\n";
+    }
+
+    BOOL wow64 = FALSE;
+
+    if (IsWow64Process(process, &wow64))
+    {
+        std::cout
+            << "[+] WOW64: "
+            << (wow64 ? "yes" : "no")
+            << "\n";
+    }
+
+    SYSTEM_INFO system_info = {};
+    GetSystemInfo(&system_info);
+
+    unsigned char* address = nullptr;
+    SIZE_T regions = 0;
+    SIZE_T committed = 0;
+
+    while (
+        address <
+        static_cast<unsigned char*>(
+            system_info.lpMaximumApplicationAddress
+        )
+    )
+    {
+        MEMORY_BASIC_INFORMATION mbi = {};
+
+        SIZE_T result = VirtualQueryEx(
+            process,
+            address,
+            &mbi,
+            sizeof(mbi)
+        );
+
+        if (result == 0)
+        {
+            break;
+        }
+
+        ++regions;
+
+        if (mbi.State == MEM_COMMIT)
+        {
+            ++committed;
+        }
+
+        auto next =
+            static_cast<unsigned char*>(mbi.BaseAddress)
+            + mbi.RegionSize;
+
+        if (next <= address)
+        {
+            break;
+        }
+
+        address = next;
+    }
+
+    std::cout
+        << "[+] Memory regions: "
+        << regions
+        << "\n";
+
+    std::cout
+        << "[+] Committed regions: "
+        << committed
+        << "\n";
+
+    std::cout
+        << "[+] Remote memory write: no\n"
+        << "[+] Remote thread creation: no\n";
+
+    CloseHandle(process);
+
+    return 0;
+}

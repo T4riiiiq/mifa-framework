@@ -1,5 +1,6 @@
 QUICK_ENTRIES = [
     {"alias": "native", "method": "win32-local-thread", "category": "Techniques", "description": "Native local thread lifecycle"},
+    {"alias": "inject", "method": "win32-inject-lab", "category": "Techniques", "description": "Inspect target-process injection compatibility"},
     {"alias": "peinfo", "method": "win32-pe-runtime-info", "category": "PE / Runtime", "description": "Inspect PE runtime metadata"},
     {"alias": "sections", "method": "win32-pe-section-characteristics", "category": "PE / Runtime", "description": "Inspect PE section characteristics"},
     {"alias": "filebuf", "method": "win32-file-buffer", "category": "Buffers", "description": "Read a file into a local data buffer"},
