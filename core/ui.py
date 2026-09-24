@@ -60,7 +60,7 @@ class TerminalUI:
         print(self.info("        |") + self.warning("              ( /\\ )") + self.info("                |"))
         print(self.info("        |") + self.warning("               \\__/") + self.info("                 |"))
         print(self.info("        |                                    |"))
-        print(self.info("        |") + self.heading("    Windows Research Framework") + self.info("      |"))
+        print(self.info("        |") + self.heading("    Windows Security Framework") + self.info("      |"))
         print(self.info("        |") + self.dim(f"               v{version}") + self.info("               |"))
         print(self.info("         \\                                  /"))
         print(self.info("          '.                              .'"))

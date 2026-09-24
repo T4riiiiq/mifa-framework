@@ -1045,7 +1045,7 @@ def run_quick(
     )
 
 
-def run_research(ui, catalog, target=None, search=None):
+def run_inspect(ui, catalog, target=None, search=None):
     if target is not None:
         method_id = resolve_target(target, catalog)
 
@@ -1069,7 +1069,7 @@ def run_research(ui, catalog, target=None, search=None):
             )
         ]
 
-    print(ui.heading("Research Catalog"))
+    print(ui.heading("Inspect Catalog"))
     print(f"{'ID':<38} {'LANG':<8} {'ARCH':<12}")
     ui.rule(62)
 
@@ -1098,7 +1098,7 @@ def interactive_menu(
         print(ui.heading("Main"))
         ui.rule(32)
         print("  [1/q] Quick")
-        print("  [2/r] Research")
+        print("  [2/i] Inspect")
         print("  [3/m] Methods")
         print("  [4/b] Builds")
         print("  [5/v] Verify")
@@ -1122,8 +1122,8 @@ def interactive_menu(
                 architecture="x64",
                 interactive=True,
             )
-        elif choice in ("2", "r", "research"):
-            run_research(ui=ui, catalog=catalog)
+        elif choice in ("2", "i", "inspect"):
+            run_inspect(ui=ui, catalog=catalog)
         elif choice in ("3", "m", "methods"):
             list_methods(catalog)
         elif choice in ("4", "b", "builds"):
@@ -1138,7 +1138,7 @@ def interactive_menu(
 def build_parser():
     parser = argparse.ArgumentParser(
         prog="mifa",
-        description="Mifa modular Windows research framework",
+        description="Mifa modular Windows security framework",
     )
 
     parser.add_argument(
@@ -1216,13 +1216,13 @@ def build_parser():
         help="Override a declared method parameter. May be repeated.",
     )
 
-    research_parser = subparsers.add_parser(
-        "research",
-        aliases=["r"],
+    inspect_parser = subparsers.add_parser(
+        "inspect",
+        aliases=["i"],
         help="Explore methods and contracts",
     )
-    research_parser.add_argument("target", nargs="?", help="Quick alias or Method ID")
-    research_parser.add_argument("--search", help="Filter the research catalog")
+    inspect_parser.add_argument("target", nargs="?", help="Quick alias or Method ID")
+    inspect_parser.add_argument("--search", help="Filter the inspect catalog")
 
     verify_parser = subparsers.add_parser(
         "verify",
@@ -1341,8 +1341,8 @@ def main():
             parameter_items=args.parameters,
             interactive=(args.target is None and sys.stdin.isatty()),
         )
-    elif args.command in ("research", "r"):
-        run_research(
+    elif args.command in ("inspect", "i"):
+        run_inspect(
             ui=ui,
             catalog=catalog,
             target=args.target,

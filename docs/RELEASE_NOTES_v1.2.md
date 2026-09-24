@@ -63,7 +63,7 @@ generates:
 ```text
 34 methods
 60 presets
-30 Windows research/foundation methods
+30 Windows analysis/foundation methods
 4 regression/test methods
 ```
 

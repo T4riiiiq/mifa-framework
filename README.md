@@ -1,10 +1,10 @@
 # Mifa
 
-Mifa is a modular Windows research and build framework written in Python.
+Mifa is a modular Windows security and build framework written in Python.
 
 It generates, validates, cross-compiles, and tracks reusable C/C++ methods for
 Windows internals, PE analysis, process and module inspection, local-memory
-research, payload/data handling, and reusable Windows runtime foundations.
+analysis, payload/data handling, and reusable Windows runtime foundations.
 
 **Current development version:** `1.2.0`
 
@@ -15,7 +15,7 @@ research, payload/data handling, and reusable Windows runtime foundations.
 Mifa v1.2 release candidate contains:
 
 - 34 valid method contracts
-- 30 Windows research/foundation methods
+- 30 Windows analysis/foundation methods
 - 4 regression/test methods
 - 60 presets
 - typed build-time parameters

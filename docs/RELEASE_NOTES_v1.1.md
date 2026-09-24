@@ -1,6 +1,6 @@
 # Mifa v1.1.0 Release Notes
 
-Mifa v1.1.0 extends the v1.0 Windows/PE research foundation with a typed
+Mifa v1.1.0 extends the v1.0 Windows/PE analysis foundation with a typed
 parameter engine, richer compatibility metadata, reusable Windows technique
 foundations, and release-quality validation tooling.
 
@@ -29,7 +29,7 @@ Added:
 - `win32-runtime-helper`
 
 These methods remain scoped to local-process primitives, read-only inspection,
-module/address research, file mapping, and benign thread lifecycle behavior.
+module/address analysis, file mapping, and benign thread lifecycle behavior.
 
 ## Quality and release tooling
 
@@ -47,7 +47,7 @@ Added:
 ## Catalog
 
 - 28 method contracts
-- 24 Windows research/foundation methods
+- 24 Windows analysis/foundation methods
 - 4 regression/test methods
 - 48 presets
 

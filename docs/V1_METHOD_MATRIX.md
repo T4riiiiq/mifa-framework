@@ -1,6 +1,6 @@
 # Mifa v1.0 Method Matrix
 
-Mifa v1.0 provides a modular Windows build and research framework with
+Mifa v1.0 provides a modular Windows build and security framework with
 validated x64 Windows/PE foundation methods.
 
 ## Validation Status

@@ -11,7 +11,7 @@ Methods : 34
 Presets : 60
 ```
 
-The catalog contains 30 Windows research/foundation methods and 4
+The catalog contains 30 Windows analysis/foundation methods and 4
 regression/test methods.
 
 ## Phase 3 Batch 1 baseline

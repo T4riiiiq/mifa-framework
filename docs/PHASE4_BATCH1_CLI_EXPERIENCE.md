@@ -7,7 +7,7 @@ will use later in Phase 4.
 
 - preserve the existing v1.2 engine and contracts
 - add the neutral `Quick` workflow for fast selection
-- add the detailed `Research` workflow
+- add the detailed `Inspect` workflow
 - rename the old `Doctor` environment check to `Verify`
 - add a compact Mifa furnace-inspired terminal banner
 - add dependency-free terminal colors
@@ -23,10 +23,10 @@ mifa quick
 mifa q
 mifa q peinfo
 mifa q filebuf --arch x86
-mifa research
-mifa r
-mifa r win32-pe-runtime-info
-mifa r peinfo
+mifa inspect
+mifa i
+mifa i win32-pe-runtime-info
+mifa i peinfo
 mifa verify
 mifa verify --strict
 ```

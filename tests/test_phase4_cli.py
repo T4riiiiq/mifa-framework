@@ -48,8 +48,22 @@ class Phase4CliTests(unittest.TestCase):
             ui.banner("1.2.0")
         output = buffer.getvalue()
         self.assertIn("M I F A", output)
-        self.assertIn("Windows Research Framework", output)
+        self.assertIn("Windows Security Framework", output)
         self.assertNotIn("\033[", output)
+
+
+
+    def test_inspect_short_alias_is_i(self):
+        import subprocess
+
+        result = subprocess.run(
+            ["python3", "mifa.py", "i", "peinfo"],
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("win32-pe-runtime-info", result.stdout)
 
 
 if __name__ == "__main__":

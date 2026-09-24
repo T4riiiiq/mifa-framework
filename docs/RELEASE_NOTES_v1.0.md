@@ -5,12 +5,12 @@ First stable foundation release of Mifa.
 ## Highlights
 
 Mifa v1.0 establishes the project's modular build system and Windows
-research foundation.
+analysis foundation.
 
 The release includes:
 
 - 21 method contracts
-- 18 Windows research methods
+- 18 Windows analysis methods
 - 3 regression/test methods
 - C and C++17 generation
 - x64 and x86 MinGW-w64 build support

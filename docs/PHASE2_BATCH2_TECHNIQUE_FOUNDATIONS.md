@@ -1,6 +1,6 @@
 # Phase 2 — Batch 2: Technique Foundations
 
-Batch 2 adds reusable Windows research foundations on top of the Phase 2
+Batch 2 adds reusable Windows analysis foundations on top of the Phase 2
 parameter engine.
 
 ## Added methods
