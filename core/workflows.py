@@ -4,6 +4,7 @@ QUICK_ENTRIES = [
     {"alias": "dll", "method": "win32-dll-injection-lab", "category": "Techniques", "description": "Inspect DLL and target-process compatibility"},
     {"alias": "reflect", "method": "win32-reflective-map-lab", "category": "Techniques", "description": "Inspect reflective PE mapping compatibility"},
     {"alias": "hollow", "method": "win32-hollow-lab", "category": "Techniques", "description": "Inspect suspended-process hollowing compatibility"},
+    {"alias": "managed", "method": "win32-managed-lab", "category": "Techniques", "description": "Inspect CLR and managed PE compatibility"},
     {"alias": "peinfo", "method": "win32-pe-runtime-info", "category": "PE / Runtime", "description": "Inspect PE runtime metadata"},
     {"alias": "sections", "method": "win32-pe-section-characteristics", "category": "PE / Runtime", "description": "Inspect PE section characteristics"},
     {"alias": "filebuf", "method": "win32-file-buffer", "category": "Buffers", "description": "Read a file into a local data buffer"},

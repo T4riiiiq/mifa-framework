@@ -1,0 +1,679 @@
+#include <windows.h>
+
+#include <algorithm>
+#include <cstdint>
+#include <cstring>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <string>
+#include <vector>
+
+
+static bool range_valid(
+    std::size_t offset,
+    std::size_t length,
+    std::size_t total
+)
+{
+    return offset <= total
+        && length <= (total - offset);
+}
+
+
+static std::uint16_t read_u16(
+    const unsigned char* p
+)
+{
+    return static_cast<std::uint16_t>(p[0])
+        | (static_cast<std::uint16_t>(p[1]) << 8);
+}
+
+
+static std::uint32_t read_u32(
+    const unsigned char* p
+)
+{
+    return static_cast<std::uint32_t>(p[0])
+        | (static_cast<std::uint32_t>(p[1]) << 8)
+        | (static_cast<std::uint32_t>(p[2]) << 16)
+        | (static_cast<std::uint32_t>(p[3]) << 24);
+}
+
+
+struct PeView
+{
+    std::vector<unsigned char> data;
+    IMAGE_FILE_HEADER file_header{};
+    bool is64 = false;
+    DWORD size_of_headers = 0;
+
+    IMAGE_DATA_DIRECTORY
+        dirs[IMAGE_NUMBEROF_DIRECTORY_ENTRIES]{};
+
+    std::vector<IMAGE_SECTION_HEADER> sections;
+};
+
+
+static bool load_pe(
+    const std::string& path,
+    PeView& pe,
+    std::string& error
+)
+{
+    std::ifstream file(
+        path,
+        std::ios::binary
+    );
+
+    if (!file)
+    {
+        error = "Unable to open file";
+        return false;
+    }
+
+    file.seekg(
+        0,
+        std::ios::end
+    );
+
+    std::streamoff size = file.tellg();
+
+    if (size <= 0)
+    {
+        error = "Empty file";
+        return false;
+    }
+
+    file.seekg(
+        0,
+        std::ios::beg
+    );
+
+    pe = {};
+    pe.data.resize(
+        static_cast<std::size_t>(size)
+    );
+
+    if (
+        !file.read(
+            reinterpret_cast<char*>(
+                pe.data.data()
+            ),
+            size
+        )
+    )
+    {
+        error = "Unable to read file";
+        return false;
+    }
+
+    if (
+        !range_valid(
+            0,
+            sizeof(IMAGE_DOS_HEADER),
+            pe.data.size()
+        )
+    )
+    {
+        error = "Missing DOS header";
+        return false;
+    }
+
+    IMAGE_DOS_HEADER dos{};
+
+    std::memcpy(
+        &dos,
+        pe.data.data(),
+        sizeof(dos)
+    );
+
+    if (
+        dos.e_magic != IMAGE_DOS_SIGNATURE
+        || dos.e_lfanew <= 0
+    )
+    {
+        error = "Invalid DOS header";
+        return false;
+    }
+
+    std::size_t nt =
+        static_cast<std::size_t>(
+            dos.e_lfanew
+        );
+
+    if (
+        !range_valid(
+            nt,
+            sizeof(DWORD)
+                + sizeof(IMAGE_FILE_HEADER),
+            pe.data.size()
+        )
+    )
+    {
+        error = "Invalid NT header";
+        return false;
+    }
+
+    DWORD signature = 0;
+
+    std::memcpy(
+        &signature,
+        pe.data.data() + nt,
+        sizeof(signature)
+    );
+
+    if (signature != IMAGE_NT_SIGNATURE)
+    {
+        error = "Invalid PE signature";
+        return false;
+    }
+
+    std::size_t file_header_offset =
+        nt + sizeof(DWORD);
+
+    std::memcpy(
+        &pe.file_header,
+        pe.data.data() + file_header_offset,
+        sizeof(pe.file_header)
+    );
+
+    std::size_t optional_offset =
+        file_header_offset
+        + sizeof(IMAGE_FILE_HEADER);
+
+    if (
+        !range_valid(
+            optional_offset,
+            pe.file_header.SizeOfOptionalHeader,
+            pe.data.size()
+        )
+    )
+    {
+        error = "Truncated optional header";
+        return false;
+    }
+
+    WORD magic = 0;
+
+    std::memcpy(
+        &magic,
+        pe.data.data() + optional_offset,
+        sizeof(magic)
+    );
+
+    if (magic == IMAGE_NT_OPTIONAL_HDR64_MAGIC)
+    {
+        if (
+            pe.file_header.SizeOfOptionalHeader
+            < sizeof(IMAGE_OPTIONAL_HEADER64)
+        )
+        {
+            error = "Truncated PE32+ header";
+            return false;
+        }
+
+        IMAGE_OPTIONAL_HEADER64 optional{};
+
+        std::memcpy(
+            &optional,
+            pe.data.data() + optional_offset,
+            sizeof(optional)
+        );
+
+        pe.is64 = true;
+        pe.size_of_headers =
+            optional.SizeOfHeaders;
+
+        for (
+            std::size_t i = 0;
+            i < IMAGE_NUMBEROF_DIRECTORY_ENTRIES;
+            ++i
+        )
+        {
+            pe.dirs[i] =
+                optional.DataDirectory[i];
+        }
+    }
+    else if (
+        magic == IMAGE_NT_OPTIONAL_HDR32_MAGIC
+    )
+    {
+        if (
+            pe.file_header.SizeOfOptionalHeader
+            < sizeof(IMAGE_OPTIONAL_HEADER32)
+        )
+        {
+            error = "Truncated PE32 header";
+            return false;
+        }
+
+        IMAGE_OPTIONAL_HEADER32 optional{};
+
+        std::memcpy(
+            &optional,
+            pe.data.data() + optional_offset,
+            sizeof(optional)
+        );
+
+        pe.is64 = false;
+        pe.size_of_headers =
+            optional.SizeOfHeaders;
+
+        for (
+            std::size_t i = 0;
+            i < IMAGE_NUMBEROF_DIRECTORY_ENTRIES;
+            ++i
+        )
+        {
+            pe.dirs[i] =
+                optional.DataDirectory[i];
+        }
+    }
+    else
+    {
+        error = "Unsupported optional header";
+        return false;
+    }
+
+    std::size_t section_offset =
+        optional_offset
+        + pe.file_header.SizeOfOptionalHeader;
+
+    std::size_t section_size =
+        static_cast<std::size_t>(
+            pe.file_header.NumberOfSections
+        )
+        * sizeof(IMAGE_SECTION_HEADER);
+
+    if (
+        !range_valid(
+            section_offset,
+            section_size,
+            pe.data.size()
+        )
+    )
+    {
+        error = "Truncated section table";
+        return false;
+    }
+
+    for (
+        WORD i = 0;
+        i < pe.file_header.NumberOfSections;
+        ++i
+    )
+    {
+        IMAGE_SECTION_HEADER section{};
+
+        std::memcpy(
+            &section,
+            pe.data.data()
+                + section_offset
+                + static_cast<std::size_t>(i)
+                    * sizeof(section),
+            sizeof(section)
+        );
+
+        pe.sections.push_back(
+            section
+        );
+    }
+
+    return true;
+}
+
+
+static bool rva_to_raw(
+    const PeView& pe,
+    DWORD rva,
+    DWORD& raw
+)
+{
+    if (rva < pe.size_of_headers)
+    {
+        if (rva < pe.data.size())
+        {
+            raw = rva;
+            return true;
+        }
+
+        return false;
+    }
+
+    for (const auto& section : pe.sections)
+    {
+        DWORD span = std::max(
+            section.Misc.VirtualSize,
+            section.SizeOfRawData
+        );
+
+        std::uint64_t start =
+            section.VirtualAddress;
+
+        std::uint64_t end =
+            start + span;
+
+        if (
+            rva >= start
+            && static_cast<std::uint64_t>(rva)
+                < end
+        )
+        {
+            DWORD delta =
+                rva - section.VirtualAddress;
+
+            if (
+                delta >= section.SizeOfRawData
+            )
+            {
+                return false;
+            }
+
+            std::uint64_t candidate =
+                static_cast<std::uint64_t>(
+                    section.PointerToRawData
+                )
+                + delta;
+
+            if (
+                candidate >= pe.data.size()
+            )
+            {
+                return false;
+            }
+
+            raw =
+                static_cast<DWORD>(
+                    candidate
+                );
+
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
+static const char* machine_name(
+    WORD machine
+)
+{
+    switch (machine)
+    {
+        case IMAGE_FILE_MACHINE_I386:
+            return "x86";
+
+        case IMAGE_FILE_MACHINE_AMD64:
+            return "x64";
+
+        case IMAGE_FILE_MACHINE_ARM64:
+            return "arm64";
+
+        default:
+            return "other";
+    }
+}
+
+
+int main(
+    int argc,
+    char* argv[]
+)
+{
+    if (argc != 2)
+    {
+        std::cerr
+            << "Usage: win32-managed-lab.exe "
+            << "<pe-file>\n";
+
+        return 2;
+    }
+
+    PeView pe{};
+    std::string error;
+
+    if (
+        !load_pe(
+            argv[1],
+            pe,
+            error
+        )
+    )
+    {
+        std::cerr
+            << "[!] "
+            << error
+            << "\n";
+
+        return 1;
+    }
+
+    std::cout
+        << "Mifa Managed Image Compatibility Lab\n"
+        << "Build: {{BUILD_ID}}\n"
+        << "Architecture: {{ARCH}}\n\n";
+
+    std::cout
+        << "[+] File: "
+        << argv[1]
+        << "\n";
+
+    std::cout
+        << "[+] Machine: "
+        << machine_name(
+            pe.file_header.Machine
+        )
+        << "\n";
+
+    std::cout
+        << "[+] PE format: "
+        << (pe.is64 ? "PE32+" : "PE32")
+        << "\n";
+
+    const IMAGE_DATA_DIRECTORY& clr =
+        pe.dirs[
+            IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR
+        ];
+
+    if (
+        clr.VirtualAddress == 0
+        || clr.Size == 0
+    )
+    {
+        std::cout
+            << "[+] CLR descriptor: absent\n"
+            << "[+] Classification: native PE\n"
+            << "[+] CLR started: no\n"
+            << "[+] Assembly executed: no\n";
+
+        return 0;
+    }
+
+    std::cout
+        << "[+] CLR descriptor: present\n"
+        << "[+] CLR RVA: 0x"
+        << std::hex
+        << std::uppercase
+        << clr.VirtualAddress
+        << "\n"
+        << "[+] CLR size: 0x"
+        << clr.Size
+        << std::dec
+        << "\n";
+
+    DWORD clr_raw = 0;
+
+    if (
+        !rva_to_raw(
+            pe,
+            clr.VirtualAddress,
+            clr_raw
+        )
+    )
+    {
+        std::cerr
+            << "[!] Unable to translate CLR RVA\n";
+
+        return 1;
+    }
+
+    /*
+        IMAGE_COR20_HEADER minimum fields:
+
+        +0x00 DWORD cb
+        +0x04 WORD  MajorRuntimeVersion
+        +0x06 WORD  MinorRuntimeVersion
+        +0x08 DWORD MetaData RVA
+        +0x0C DWORD MetaData Size
+        +0x10 DWORD Flags
+        +0x14 DWORD EntryPointToken / RVA
+    */
+
+    if (
+        !range_valid(
+            clr_raw,
+            0x18,
+            pe.data.size()
+        )
+    )
+    {
+        std::cerr
+            << "[!] Truncated CLR header\n";
+
+        return 1;
+    }
+
+    const unsigned char* cor =
+        pe.data.data() + clr_raw;
+
+    std::uint32_t header_size =
+        read_u32(cor + 0x00);
+
+    std::uint16_t runtime_major =
+        read_u16(cor + 0x04);
+
+    std::uint16_t runtime_minor =
+        read_u16(cor + 0x06);
+
+    std::uint32_t metadata_rva =
+        read_u32(cor + 0x08);
+
+    std::uint32_t metadata_size =
+        read_u32(cor + 0x0C);
+
+    std::uint32_t flags =
+        read_u32(cor + 0x10);
+
+    std::uint32_t entry =
+        read_u32(cor + 0x14);
+
+    constexpr std::uint32_t IL_ONLY =
+        0x00000001;
+
+    constexpr std::uint32_t BIT32_REQUIRED =
+        0x00000002;
+
+    constexpr std::uint32_t NATIVE_ENTRY =
+        0x00000010;
+
+    constexpr std::uint32_t STRONG_NAME =
+        0x00000008;
+
+    constexpr std::uint32_t BIT32_PREFERRED =
+        0x00020000;
+
+    std::cout
+        << "[+] CLR header size: "
+        << header_size
+        << "\n";
+
+    std::cout
+        << "[+] CLR runtime: "
+        << runtime_major
+        << "."
+        << runtime_minor
+        << "\n";
+
+    std::cout
+        << "[+] Metadata RVA: 0x"
+        << std::hex
+        << std::uppercase
+        << metadata_rva
+        << "\n";
+
+    std::cout
+        << "[+] Metadata size: 0x"
+        << metadata_size
+        << "\n";
+
+    std::cout
+        << "[+] CLR flags: 0x"
+        << flags
+        << std::dec
+        << "\n";
+
+    std::cout
+        << "[+] IL only: "
+        << (
+            flags & IL_ONLY
+                ? "yes"
+                : "no"
+        )
+        << "\n";
+
+    std::cout
+        << "[+] 32-bit required: "
+        << (
+            flags & BIT32_REQUIRED
+                ? "yes"
+                : "no"
+        )
+        << "\n";
+
+    std::cout
+        << "[+] 32-bit preferred: "
+        << (
+            flags & BIT32_PREFERRED
+                ? "yes"
+                : "no"
+        )
+        << "\n";
+
+    std::cout
+        << "[+] Strong-name signed flag: "
+        << (
+            flags & STRONG_NAME
+                ? "yes"
+                : "no"
+        )
+        << "\n";
+
+    if (flags & NATIVE_ENTRY)
+    {
+        std::cout
+            << "[+] Native entry RVA: 0x"
+            << std::hex
+            << entry
+            << std::dec
+            << "\n";
+    }
+    else
+    {
+        std::cout
+            << "[+] Managed entry token: 0x"
+            << std::hex
+            << entry
+            << std::dec
+            << "\n";
+    }
+
+    std::cout
+        << "[+] Classification: managed PE\n"
+        << "[+] CLR started: no\n"
+        << "[+] Assembly loaded: no\n"
+        << "[+] Assembly executed: no\n";
+
+    return 0;
+}

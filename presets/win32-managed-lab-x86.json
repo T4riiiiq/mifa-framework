@@ -1,0 +1,8 @@
+{
+  "id": "win32-managed-lab-x86",
+  "name": "win32-managed-lab x86",
+  "method": "win32-managed-lab",
+  "architecture": "x86",
+  "build_type": "release",
+  "parameters": {}
+}

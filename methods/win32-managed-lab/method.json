@@ -1,0 +1,42 @@
+{
+  "id": "win32-managed-lab",
+  "name": "Win32 Managed Image Compatibility Lab",
+  "language": "cpp",
+  "description": "Inspect PE CLR/COM metadata, managed runtime flags, architecture, and entry-point information without loading or executing the assembly.",
+  "architectures": [
+    "x64",
+    "x86"
+  ],
+  "requires_payload": false,
+  "payload_types": [],
+  "build_types": [
+    "release",
+    "debug"
+  ],
+  "parameters": {},
+  "runtime_arguments": [
+    {
+      "name": "pe_path",
+      "type": "path",
+      "required": true,
+      "description": "Managed or native PE image to inspect"
+    }
+  ],
+  "technique": {
+    "alias": "managed",
+    "category": "Managed",
+    "role": "technique",
+    "quick": true,
+    "runtime": "managed",
+    "privilege": "user",
+    "validation": "planned"
+  },
+  "sources": [
+    {
+      "template": "templates/main.cpp.tmpl",
+      "output": "main.cpp",
+      "compile": true
+    }
+  ],
+  "output_name": "win32-managed-lab.exe"
+}
