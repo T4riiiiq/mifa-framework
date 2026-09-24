@@ -1,0 +1,52 @@
+{
+  "id": "win32-jscript-lab",
+  "name": "Win32 JScript Compatibility Lab",
+  "language": "cpp",
+  "description": "Inspect JScript/JScript.Encode input and Windows Script Host availability without executing the supplied script.",
+  "architectures": [
+    "x64",
+    "x86"
+  ],
+  "requires_payload": false,
+  "payload_types": [],
+  "build_types": [
+    "release",
+    "debug"
+  ],
+  "parameters": {
+    "max_file_bytes": {
+      "type": "int",
+      "required": false,
+      "default": 4194304,
+      "min": 1,
+      "max": 16777216,
+      "render": "raw",
+      "description": "Maximum script size accepted for static inspection"
+    }
+  },
+  "runtime_arguments": [
+    {
+      "name": "script_path",
+      "type": "path",
+      "required": true,
+      "description": "JScript or JScript.Encode file to inspect"
+    }
+  ],
+  "technique": {
+    "alias": "jscript",
+    "category": "Script",
+    "role": "technique",
+    "quick": true,
+    "runtime": "script",
+    "privilege": "user",
+    "validation": "planned"
+  },
+  "sources": [
+    {
+      "template": "templates/main.cpp.tmpl",
+      "output": "main.cpp",
+      "compile": true
+    }
+  ],
+  "output_name": "win32-jscript-lab.exe"
+}

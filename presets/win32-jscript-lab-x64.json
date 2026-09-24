@@ -1,0 +1,10 @@
+{
+  "id": "win32-jscript-lab-x64",
+  "name": "win32-jscript-lab x64",
+  "method": "win32-jscript-lab",
+  "architecture": "x64",
+  "build_type": "release",
+  "parameters": {
+    "max_file_bytes": 4194304
+  }
+}
